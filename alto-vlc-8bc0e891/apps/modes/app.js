@@ -18628,7 +18628,8 @@ function syncPanelTouchLattice(configuration) {
 // enregistrements et repères (sections et lettres), le mode de référence et les tétracordes, chacun dans le tableau
 // de Modes avec ses seules toniques en rangées, le bourdon et les timbres retenus. Tout le reste de Modes (barre du
 // haut, graphe, menus, réglages) est caché; rien n'est enregistré dans le navigateur. Révision du 24 octobre 2026
-// (Simon) : sans graphe, sans degrés ni accords, bourdon sur la tonique du mode, octave par + / −.
+// (Simon) : sans graphe, sans degrés ni accords, bourdon sur la tonique du mode, octave par + / −. Seconde révision du
+// 24 octobre : aucun texte de présentation, titre = nom de l'option, notes du bourdon allumées, monodie, un seul repère.
 
 // Toniques nommées en solfège : naturels pythagoriciens à partir du la (1/1 = la), position sur la chaîne de quintes.
 const PROJECT_TONICS = {
@@ -18638,7 +18639,7 @@ const PROJECT_TONICS = {
 };
 const projectState = {
   active: false, data: null, base: "", current: null, drone: null, droneFifth: true, octaveOffset: 0,
-  droneVolume: 70, notesVolume: 70, droneBus: null, rows: null, tetrachordColumns: null,
+  droneVolume: 70, notesVolume: 70, droneBus: null, rows: null, tetrachordColumns: null, currentName: "",
 };
 
 function projectSourceUrl() {
@@ -18664,10 +18665,10 @@ function projectTonicOctave(audioOctave) {
   return Math.floor(midi / 12) - 1;
 }
 
-// Registre de référence (l'alto : tonique dans l'octave de do3), décalé par le réglage + / −.
+// Registre de référence (donnees.json, sons.octave : tonique dans l'octave de do4), décalé par le réglage + / −.
 function applyProjectRegister() {
   if (!state.selectedTonic) return;
-  state.audioOctave = (projectState.data.sons.octave ?? 3) + projectState.octaveOffset - projectTonicOctave(0);
+  state.audioOctave = (projectState.data.sons.octave ?? 4) + projectState.octaveOffset - projectTonicOctave(0);
 }
 
 // ---------- Sélections du projet ----------
@@ -18712,10 +18713,11 @@ function projectTetrachordSelection(tetrachord) {
   return projectRowsSelection({ mode, rowTonics: tonics, principal, columns });
 }
 
-function selectProjectItem(key, apply) {
+function selectProjectItem(key, name, apply) {
   stopProjectDrone();
   stopAllSounds();
   projectState.current = key;
+  projectState.currentName = name;
   apply();
   applyProjectRegister();
   render();
@@ -18783,11 +18785,27 @@ function projectDroneFrequency(button) {
   return audioFrequency(cell.dataset.audioRelativeRatio, state.audioOctave + Number(cell.dataset.audioRegister ?? 0));
 }
 
+// Cases que le bourdon fait entendre : la tonique de la rangée et, avec « Tonique + quinte », sa quinte 3/2.
+function projectDroneCells(row) {
+  const cells = [...(row?.querySelectorAll(".mode-heji-cell[data-audio-relative-ratio]") ?? [])];
+  if (!cells.length) return [];
+  const frequency = (cell) => audioFrequency(cell.dataset.audioRelativeRatio, Number(cell.dataset.audioRegister ?? 0));
+  const tonic = frequency(cells[0]);
+  const fifth = projectState.droneFifth ? cells.find((cell) => Math.abs(frequency(cell) / tonic - 1.5) < 1e-9) : null;
+  return [cells[0], fifth].filter(Boolean);
+}
+
+// Le bourdon allume ses notes dans le tableau, comme des notes cliquées.
 function refreshProjectDroneButtons() {
+  document.querySelectorAll(".is-project-drone-note").forEach((cell) => {
+    cell.classList.remove("is-project-drone-note", "is-sounding");
+    refreshSoundTrigger(cell);
+  });
   document.querySelectorAll("[data-project-drone]").forEach((button) => {
     const on = projectState.drone?.key === button.dataset.projectDrone;
     button.setAttribute("aria-pressed", String(on));
     button.projectRow?.classList.toggle("has-project-drone", on);
+    if (on) projectDroneCells(button.projectRow).forEach((cell) => cell.classList.add("is-project-drone-note", "is-sounding"));
   });
 }
 
@@ -18830,14 +18848,21 @@ function projectSlider(label, value, onInput) {
   return wrapper;
 }
 
-// Nom avec le code de couleur des limites (Éolien L7, Phryg-12L13, Phryg-60L7m…).
+// Nom avec le code de couleur des limites (Éolien L7, Phryg-12L13, Phryg-60L7m…) : le nombre devant L et celui de
+// la limite, chacun dans la couleur de sa limite, comme les entiers ailleurs dans le site (30 et 60 : limite 5).
 function projectColorizedName(text) {
   const wrapper = projectElement("span", "project-name");
-  const match = String(text).match(/^(.*L)(\d+)(\D*)$/);
+  const match = String(text).match(/^(.*?)(\d*)(L)(\d+)(\D*)$/);
   if (!match) { wrapper.textContent = text; return wrapper; }
-  const limit = projectElement("span", "", match[2]);
-  limit.style.color = colorForInteger(match[2]);
-  wrapper.append(document.createTextNode(match[1]), limit, document.createTextNode(match[3]));
+  const number = (digits) => {
+    const span = projectElement("span", "", digits);
+    span.style.color = colorForInteger(digits);
+    return span;
+  };
+  const [, before = "", code, letter, limit, after] = match;
+  wrapper.append(document.createTextNode(before));
+  if (code) wrapper.append(number(code));
+  wrapper.append(document.createTextNode(letter), number(limit), document.createTextNode(after));
   return wrapper;
 }
 
@@ -18860,6 +18885,24 @@ function projectTimeLabel(seconds) {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
 
+// Un seul repère actif sur l'ensemble des lecteurs : choisir une partie ou une lettre éteint les repères des autres
+// lecteurs (et les met en pause); un second clic sur un repère actif le désélectionne et met le lecteur en pause.
+function clearProjectMarkers(exceptRow = null) {
+  document.querySelectorAll(".project-player").forEach((row) => {
+    if (row === exceptRow) return;
+    row.querySelectorAll(".project-marker[aria-pressed=\"true\"]").forEach((button) => button.setAttribute("aria-pressed", "false"));
+    row.projectShowLetters?.(null);
+  });
+}
+
+function projectMarkerGroup(label, className) {
+  const group = projectElement("div", "project-marker-group");
+  group.append(projectElement("span", "project-marker-label", label));
+  const buttons = projectElement("span", className);
+  group.append(buttons);
+  return { group, buttons };
+}
+
 function buildProjectListen() {
   const { ecoute } = projectState.data;
   const timeAt = projectMeasureTimes(ecoute);
@@ -18872,10 +18915,12 @@ function buildProjectListen() {
     const audio = projectElement("audio");
     audio.controls = true;
     audio.preload = "metadata";
+    audio.setAttribute("controlsList", "noplaybackrate nodownload");
     audio.src = new URL(player.fichier, projectState.base).href;
-    audio.addEventListener("play", () => document.querySelectorAll(".project-player audio").forEach((other) => {
-      if (other !== audio) other.pause();
-    }));
+    audio.addEventListener("play", () => {
+      document.querySelectorAll(".project-player audio").forEach((other) => { if (other !== audio) other.pause(); });
+      clearProjectMarkers(row);
+    });
     audio.addEventListener("error", () => row.classList.add("is-missing"));
     row.append(audio, projectElement("span", "project-player-missing", "Enregistrement à venir."));
     const seekTo = (seconds) => {
@@ -18883,36 +18928,45 @@ function buildProjectListen() {
       if (audio.readyState >= 1) seek();
       else audio.addEventListener("loadedmetadata", seek, { once: true });
     };
-    const markers = projectElement("div", "project-markers");
-    const sections = projectElement("span", "project-sections");
-    const letters = projectElement("span", "project-letters");
-    const showLetters = (part) => {
-      letters.replaceChildren(...(part.lettres ?? []).map((letter) => {
-        const time = markerTime(letter);
-        const button = projectElement("button", "project-marker is-letter", letter.nom);
-        button.type = "button";
-        button.title = `${letter.nom} — mesure ${letter.mesure}, ${projectTimeLabel(time)}`;
-        button.setAttribute("aria-label", `${player.titre} : lettre ${letter.nom}, mesure ${letter.mesure}, ${projectTimeLabel(time)}`);
-        button.addEventListener("click", () => seekTo(time));
-        return button;
-      }));
-    };
-    ecoute.sections.forEach((part, index) => {
-      const time = markerTime(part);
-      const button = projectElement("button", "project-marker is-section", part.nom);
+    // Bouton de repère : un clic le choisit et lance la lecture à son temps; un second clic le désélectionne.
+    const markerButton = (className, text, ariaLabel, time, onChoose, onClear) => {
+      const button = projectElement("button", `project-marker ${className}`, text);
       button.type = "button";
-      button.title = `${part.nom} — mesure ${part.mesure}, ${projectTimeLabel(time)}`;
-      button.setAttribute("aria-label", `${player.titre} : ${part.nom}, mesure ${part.mesure}, ${projectTimeLabel(time)}`);
-      button.setAttribute("aria-pressed", String(index === 0));
+      button.title = ariaLabel;
+      button.setAttribute("aria-label", `${player.titre} : ${ariaLabel}`);
+      button.setAttribute("aria-pressed", "false");
       button.addEventListener("click", () => {
-        sections.querySelectorAll("button").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
-        showLetters(part);
+        if (button.getAttribute("aria-pressed") === "true") {
+          button.setAttribute("aria-pressed", "false");
+          onClear?.();
+          audio.pause();
+          return;
+        }
+        clearProjectMarkers(row);
+        button.parentElement.querySelectorAll("button").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+        onChoose?.();
         seekTo(time);
       });
-      sections.append(button);
+      return button;
+    };
+    const markers = projectElement("div", "project-markers");
+    const parts = projectMarkerGroup("Parties", "project-sections");
+    const letters = projectMarkerGroup("Lettres de répétition", "project-letters");
+    const showLetters = (part) => {
+      letters.group.hidden = !part;
+      letters.buttons.replaceChildren(...(part?.lettres ?? []).map((letter) => {
+        const time = markerTime(letter);
+        return markerButton("is-letter", letter.nom, `lettre ${letter.nom}, mesure ${letter.mesure}, ${projectTimeLabel(time)}`, time);
+      }));
+    };
+    row.projectShowLetters = showLetters;
+    ecoute.sections.forEach((part) => {
+      const time = markerTime(part);
+      parts.buttons.append(markerButton("is-section", part.nom, `${part.nom}, mesure ${part.mesure}, ${projectTimeLabel(time)}`, time,
+        () => showLetters(part), () => showLetters(null)));
     });
-    showLetters(ecoute.sections[0]);
-    markers.append(sections, letters);
+    showLetters(null);
+    markers.append(parts.group, letters.group);
     row.append(markers);
     section.append(row);
   });
@@ -18922,9 +18976,9 @@ function buildProjectListen() {
 function buildProjectPanel() {
   const { data } = projectState;
   const panel = projectElement("div", "project-panel");
-  panel.append(projectElement("p", "project-kicker", data.sousTitre ?? "Répétition"));
   panel.append(projectElement("h1", "project-title", data.titre));
 
+  // Seulement les options cliquables : le mode de référence, puis les tétracordes.
   const itemButton = (key, label, apply) => {
     const button = projectElement("button", "project-item");
     button.type = "button";
@@ -18933,32 +18987,24 @@ function buildProjectPanel() {
     button.append(projectColorizedName(label));
     button.addEventListener("click", () => {
       panel.querySelectorAll("[data-project-item]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
-      selectProjectItem(key, apply);
+      selectProjectItem(key, label, apply);
     });
     return button;
   };
-
-  panel.append(projectElement("h2", "project-heading", "Référence"));
-  panel.append(itemButton("reference", data.reference.nom, projectReferenceSelection()));
-  if (data.aide) panel.append(projectElement("p", "project-help", data.aide));
-
-  panel.append(projectElement("h2", "project-heading", "Tétracordes"));
-  let section = null;
+  const items = projectElement("div", "project-items");
+  items.append(itemButton("reference", data.reference.nom, projectReferenceSelection()));
   data.tetracordes.forEach((tetrachord, index) => {
-    if (tetrachord.section && tetrachord.section !== section) panel.append(projectElement("h3", "project-subheading", tetrachord.section));
-    section = tetrachord.section ?? null;
-    panel.append(itemButton(`t${index}`, tetrachord.nom, projectTetrachordSelection(tetrachord)));
+    items.append(itemButton(`t${index}`, tetrachord.nom, projectTetrachordSelection(tetrachord)));
   });
+  panel.append(items);
 
-  // Son : timbre, « Tout arrêter » et plein écran (venus de la barre du haut), puis le bourdon.
-  panel.append(projectElement("h2", "project-heading", "Son"));
+  // Bourdon : timbre et « Tout arrêter » (venus de la barre du haut), notes, octave, volumes.
+  panel.append(projectElement("h2", "project-heading", "Bourdon"));
   const soundRow = projectElement("div", "project-sound-row");
   const timbre = document.querySelector(".sound-timbre-control");
   if (timbre) soundRow.append(timbre);
   const stop = document.querySelector("#audio-stop");
   if (stop) soundRow.append(stop);
-  const fullscreen = document.querySelector("#fullscreen-toggle");
-  if (fullscreen) soundRow.append(fullscreen);
   panel.append(soundRow);
   panel.append(projectSegmented("Notes du bourdon", [{ label: "Tonique + quinte", fifth: true }, { label: "Tonique seule", fifth: false }],
     (option) => option.fifth === projectState.droneFifth, (option) => {
@@ -19002,7 +19048,7 @@ function buildProjectPanel() {
 }
 
 // Tableau : seules les rangées des toniques demandées; un bouton « Bourdon » à gauche de chacune; pour un
-// tétracorde, les degrés qui n'en font pas partie en filigrane et son nom devant celui du mode.
+// tétracorde, les degrés qui n'en font pas partie en filigrane.
 function decorateProjectTable() {
   const content = elements.tableContent;
   const model = content.querySelector(".mode-model");
@@ -19040,11 +19086,9 @@ function decorateProjectTable() {
     [...content.querySelectorAll(".mode-ratio-row .mode-ratio-cell")].forEach((cell, degree) => {
       cell.classList.toggle("is-function-context", degree < columns.start || degree >= columns.start + columns.length);
     });
-    const title = elements.tableTitle;
-    const prefix = projectElement("span", "project-title-tetrachord");
-    prefix.append(projectColorizedName(columns.code), document.createTextNode(" · "));
-    title.prepend(prefix);
   }
+  // Titre du tableau : le seul nom de l'option cliquée (pour un tétracorde, son nom, pas celui du mode qui le contient).
+  elements.tableTitle.replaceChildren(projectColorizedName(projectState.currentName));
   // Le titre commence au bord gauche du tableau, pas à celui de la marge des bourdons.
   const titleBox = elements.tableTitle.closest(".mode-table-heading") ?? elements.tableTitle;
   titleBox.style.marginLeft = "";
@@ -19060,7 +19104,7 @@ async function startProjectMode(url) {
   projectState.base = new URL(url, document.baseURI).href;
   projectState.active = true;
   document.body.classList.add("is-project");
-  document.title = `${projectState.data.titre} — ${projectState.data.sousTitre ?? "Répétition"}`;
+  document.title = projectState.data.titre;
   // Rien n'est enregistré dans le navigateur, et la sélection reste dans le matériel du projet.
   optionsPersistenceReady = false;
   handleSelectionNavigationKey = () => false;
@@ -19077,7 +19121,7 @@ async function startProjectMode(url) {
   }
   Object.assign(state, {
     audioInstrument: projectState.data.sons.defaut, audioVolume: 100, audioMuted: false, showTableCents: true,
-    tableShowModeName: true, tableShowChords: false, graphView: "mode", displayMode: "heji",
+    tableShowModeName: true, tableShowChords: false, graphView: "mode", displayMode: "heji", audioMouseMode: "mono",
   });
   elements.audioInstrument.addEventListener("change", () => restartProjectDrone());
   // « Tout arrêter » et la barre d'espace éteignent aussi le bourdon.
@@ -19091,6 +19135,9 @@ async function startProjectMode(url) {
     if (context) { ensureProjectDroneBus(); applyProjectVolumes(); }
     return context;
   };
+  // Les notes du bourdon restent allumées quand le tableau rafraîchit les notes qui sonnent.
+  const baseRefreshSoundingIndicators = refreshSoundingIndicators;
+  refreshSoundingIndicators = () => { baseRefreshSoundingIndicators(); refreshProjectDroneButtons(); };
   const baseRender = render;
   render = () => {
     baseRender();
@@ -19100,6 +19147,9 @@ async function startProjectMode(url) {
   sidebar.hidden = false;
   sidebar.prepend(buildProjectPanel());
   document.querySelector(".analysis-column").prepend(buildProjectListen());
+  // Plein écran : coin supérieur droit du tableau.
+  const fullscreen = document.querySelector("#fullscreen-toggle");
+  if (fullscreen) { fullscreen.classList.add("project-fullscreen"); document.querySelector("#mode-table-section").append(fullscreen); }
   document.querySelector("[data-project-item=\"reference\"]").click();
   applyAudioSettings();
   sizeTimbreSelect();

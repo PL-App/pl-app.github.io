@@ -1,6 +1,5 @@
 {
   "titre": "Alto et violoncelle",
-  "sousTitre": "Page de répétition",
   "ecoute": {
     "lecteurs": [
       {
@@ -157,7 +156,6 @@
       "ré"
     ]
   },
-  "aide": "Accordeur à la = 440 ; visez l’écart affiché.",
   "tetracordes": [
     {
       "nom": "Min-24L7",
@@ -234,7 +232,6 @@
       ]
     },
     {
-      "section": "Fin de la pièce, sur do seulement",
       "nom": "Min-30L11",
       "rapports": [
         "1/1",
@@ -247,7 +244,6 @@
       ]
     },
     {
-      "section": "Fin de la pièce, sur do seulement",
       "nom": "Phryg-60L7m",
       "rapports": [
         "1/1",
@@ -268,6 +264,6 @@
       "organ-sampled"
     ],
     "defaut": "analog",
-    "octave": 3
+    "octave": 4
   }
 }
