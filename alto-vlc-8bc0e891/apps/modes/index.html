@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta name="robots" content="noindex, nofollow" />
+    <script>window.HN_PROJET = "projets/alto-violoncelle/donnees.json";</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Modes et réseaux harmoniques interactifs en harmonie naturelle."
+    />
+    <title>Modes — harmonie naturelle</title>
+    <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css?v=04d02406" />
+    <link rel="stylesheet" href="../accords/styles.css?v=a07db6f5" />
+  </head>
+  <body>
+    <main>
+      <header class="app-bar">
+        <div class="app-identity" id="top-navigation-toolbar">
+          <div class="page-tabs" role="tablist" aria-label="Modes, analyse, sommaire et frettier">
+            <button type="button" class="app-title-button" id="app-title" role="tab" aria-selected="true" aria-controls="modes-page-panel" data-page-tab="modes">Modes</button>
+            <button type="button" class="app-title-button" id="analysis-tab" role="tab" aria-selected="false" aria-controls="network-analysis-panel" data-page-tab="analysis" tabindex="-1">Analyse</button>
+            <button type="button" class="app-title-button" id="summary-tab" role="tab" aria-selected="false" aria-controls="network-summary-panel" data-page-tab="summary" tabindex="-1">Sommaire</button>
+            <button type="button" class="app-title-button" id="frettier-tab" role="tab" aria-selected="false" aria-controls="frettier-panel" data-page-tab="frettier" tabindex="-1">Frettier</button>
+          </div>
+          <p class="tonic-instruction" id="tonic-instruction">(Sélectionner une tonique ci-dessous)</p>
+        </div>
+
+        <button type="button" id="top-toolbar-toggle" class="top-toolbar-toggle" aria-controls="top-navigation-toolbar top-settings-toolbar" aria-expanded="true" aria-label="Replier la barre de menu" title="Replier la barre de menu" hidden><span class="panel-handle-icon" aria-hidden="true"><svg viewBox="0 0 18 18" focusable="false"><rect x="2.5" y="3.5" width="13" height="11" rx="2"/><path class="panel-handle-pane" d="M4.5 5.5h9v1.5h-9z"/><path d="M2.5 8.5h13"/></svg></span></button>
+        <button type="button" id="fullscreen-toggle" class="fullscreen-toggle" aria-pressed="false" aria-label="Plein écran" title="Plein écran" hidden><svg viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path class="fullscreen-enter" d="M3 7V3h4M11 3h4v4M15 11v4h-4M7 15H3v-4"/><path class="fullscreen-exit" d="M7 3v4H3M11 3v4h4M15 11h-4v4M3 11h4v4"/></svg></button>
+        <div class="app-actions" id="top-settings-toolbar" aria-label="Commandes d’affichage">
+          <div class="global-toolbar-group" aria-label="Réseau">
+            <button
+              type="button"
+              class="network-configure-button toolbar-control"
+              id="network-configure-button"
+              aria-label="Modifier le réseau ou en créer un"
+              title="Modifier le réseau ou en créer un"
+            >Réseau</button>
+
+            <div class="network-active-control">
+              <button
+                type="button"
+                class="active-network-button"
+                id="active-network-button"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls="active-network-menu"
+              >
+                <span id="active-network-label">Sélectionner un réseau</span>
+                <span class="menu-caret" aria-hidden="true">⌄</span>
+              </button>
+              <div class="active-network-menu" id="active-network-menu" role="menu" hidden></div>
+              <select id="active-network-select" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
+            </div>
+
+          </div>
+
+          <div class="tab-toolbar-group" aria-label="Options de l’onglet actif">
+
+            <label class="toolbar-select-control display-select-control" for="display-select">
+              <span class="visually-hidden">Affichage actuel</span>
+              <select id="display-select" aria-label="Affichage actuel">
+                <option value="heji">HEJI</option>
+                <option value="ratio">Ratios</option>
+                <option value="heji-cents">HEJI + cents</option>
+                <option value="degrees">Degrés</option>
+                <option value="none">Aucun</option>
+              </select>
+            </label>
+
+            <div class="options-control summary-options-control">
+              <button
+                type="button"
+                class="options-button"
+                id="summary-options-button"
+                aria-label="Contenu du sommaire"
+                aria-expanded="false"
+                aria-controls="summary-options-popover"
+              >Contenu</button>
+              <div class="options-popover summary-filter-popover" id="summary-options-popover" role="dialog" aria-label="Contenu du sommaire" hidden>
+                <div class="summary-opening-section">
+                  <div class="options-section-title summary-opening-title" id="summary-opening-title">Ouverture : graphiques du réseau</div>
+                  <div class="summary-opening-options" id="summary-opening-options" role="group" aria-labelledby="summary-opening-title"></div>
+                </div>
+                <details class="options-section summary-options-section">
+                  <summary class="options-section-title">Parties du document</summary>
+                  <div class="summary-filter-tree" id="summary-options-tree"></div>
+                </details>
+                <details class="options-section summary-options-section">
+                  <summary class="options-section-title">Toniques incluses</summary>
+                  <p class="summary-section-scope">dans Par élément et Par tonique</p>
+                  <div class="summary-filter-actions" aria-label="Sélection des toniques">
+                    <button type="button" id="summary-tonics-all">Tout</button>
+                    <button type="button" id="summary-tonics-none">Rien</button>
+                  </div>
+                  <div class="summary-tonic-list" id="summary-tonics-list"></div>
+                </details>
+                <div class="summary-reset-row">
+                  <button type="button" id="summary-options-reset">Réinitialiser</button>
+                </div>
+              </div>
+            </div>
+
+
+          <div class="analysis-toolbar-controls" aria-label="Affichage de l’analyse">
+            <div class="toolbar-toggle" role="group" aria-label="Disposition du tableau d’analyse">
+              <button type="button" id="analysis-toolbar-steps" aria-pressed="true" disabled>Par rang</button>
+              <button type="button" id="analysis-toolbar-intervals" aria-pressed="false" disabled>Par intervalle</button>
+            </div>
+            <button type="button" class="toolbar-control discordance-button" id="analysis-toolbar-discordances"
+              data-state="red" aria-label="Discordances : rouges" title="Discordances rouges" disabled>Discordances</button>
+          </div>
+
+          <div class="summary-view-controls summary-toolbar-controls" aria-label="Téléchargement du sommaire">
+            <div class="options-control summary-download-control">
+              <button
+                type="button"
+                class="options-button"
+                id="summary-download-button"
+                aria-expanded="false"
+                aria-controls="summary-download-popover"
+              >Télécharger</button>
+              <div class="options-popover summary-download-popover" id="summary-download-popover" role="dialog" aria-labelledby="summary-download-title" hidden>
+                <strong class="options-title" id="summary-download-title">Télécharger le sommaire</strong>
+                <button type="button" class="summary-download-option" id="summary-download-word">
+                  <span>Word (.docx)</span>
+                </button>
+                <p class="summary-download-status" id="summary-download-status" role="status" aria-live="polite"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="graph-view-switch modes-view-controls" role="group" aria-label="Choisir le graphique affiché">
+            <button type="button" data-graph-view="mode" aria-pressed="true">Mode</button>
+            <button type="button" data-graph-view="mode-network" aria-pressed="false">Mode + Réseau</button>
+            <button type="button" data-graph-view="tonics" aria-pressed="false">Toniques</button>
+            <button type="button" data-graph-view="network" aria-pressed="false">Réseau complet</button>
+          </div>
+
+          <details class="window-display-menu modes-window-control" id="modes-window-menu">
+            <summary>Affichage<span class="menu-caret" aria-hidden="true"></span></summary>
+            <div class="window-display-options" role="group" aria-label="Fenêtres affichées">
+              <label><input type="checkbox" id="show-graph-panel" checked> Graphique</label>
+              <label><input type="checkbox" id="show-table-panel" checked> Tableau</label>
+            </div>
+          </details>
+
+          <div class="frettier-view-controls" id="frettier-view-controls" aria-label="Options du frettier">
+            <div class="toolbar-toggle" role="group" aria-label="Type de touche">
+              <button type="button" id="frettier-tfe-button" aria-pressed="true" title="Touche à frettes entières">TFE</button>
+              <button type="button" id="frettier-tfp-button" aria-pressed="false" title="Touche à frettes partielles">TFP</button>
+            </div>
+            <button type="button" class="toolbar-control discordance-button" id="frettier-discordance-button" data-state="red"
+              aria-label="Discordances : rouges" title="Discordances rouges">Discordances</button>
+            <button type="button" class="toolbar-control frettier-flexibility-option" id="frettier-flexibility-button" aria-pressed="false"
+              title="Orphelines : notes présentes dans une seule octave du manche — cliquer pour les retirer">Orphelines</button>
+            <div class="options-control frettier-options-control">
+              <button type="button" class="options-button" id="frettier-options-button"
+                aria-expanded="false" aria-controls="frettier-options-popover" title="Largeur de case minimale">Largeur</button>
+              <div class="options-popover frettier-options-popover" id="frettier-options-popover" hidden>
+                <strong class="options-title">Largeur de case</strong>
+                <label class="minimum-fret-width-control" for="frettier-minimum-width">
+                  <span class="minimum-fret-width-label">Largeur de case minimale<span>(diapason 650 mm)</span></span>
+                  <span class="minimum-fret-width-entry">
+                    <input id="frettier-minimum-width" aria-label="Largeur de case minimale en millimètres" inputmode="decimal" placeholder="0.00" type="text" />
+                    <span aria-hidden="true">mm</span>
+                  </span>
+                </label>
+                <label class="minimum-fret-width-control capo-minimum-width-control" for="frettier-capo-minimum-width">
+                  <span class="minimum-fret-width-label">Capo : case minimale<span>(en dessous, pas de capo)</span></span>
+                  <span class="minimum-fret-width-entry">
+                    <input id="frettier-capo-minimum-width" aria-label="Largeur de case minimale pour un capo, en millimètres" inputmode="decimal" type="text" value="1" />
+                    <span aria-hidden="true">mm</span>
+                  </span>
+                </label>
+                <div class="minimum-fret-width-presets" id="frettier-minimum-width-presets" role="group" aria-label="Largeurs prédéfinies">
+                  <button type="button" data-minimum-fret-width-preset="20:21" data-minimum-fret-width-value="16.25" title="20:21 — 16,25 mm">20:21</button>
+                  <button type="button" data-minimum-fret-width-preset="27:28" data-minimum-fret-width-value="12" title="27:28 — 12 mm">27:28</button>
+                  <button type="button" data-minimum-fret-width-preset="32:33" data-minimum-fret-width-value="10" title="32:33 — 10 mm">32:33</button>
+                  <button type="button" data-minimum-fret-width-preset="64:65" data-minimum-fret-width-value="9.25" title="64:65 — 9,25 mm">64:65</button>
+                  <button type="button" data-minimum-fret-width-preset="39:40" data-minimum-fret-width-value="8.25" title="39:40 — 8,25 mm">39:40</button>
+                  <button type="button" data-minimum-fret-width-preset="44:45" data-minimum-fret-width-value="7.25" title="44:45 — 7,25 mm">44:45</button>
+                  <button type="button" data-minimum-fret-width-preset="54:55" data-minimum-fret-width-value="6" title="54:55 — 6 mm">54:55</button>
+                </div>
+              </div>
+            </div>
+            <div class="frettier-history-controls" role="group" aria-label="Historique du frettier">
+              <button type="button" class="page-refresh" id="frettier-reset" aria-label="Réinitialiser le frettier" title="Réinitialiser le frettier"><svg class="history-arrow-glyph refresh-glyph" aria-hidden="true" viewBox="0 0 20 20"><path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6"/><path d="M15.2 2.4v3.4h-3.4"/></svg></button>
+              <div class="history-navigation" role="group" aria-label="Annuler ou rétablir une modification du frettier">
+                <button type="button" id="frettier-undo" aria-label="Annuler la dernière modification du frettier" title="Précédent" disabled><svg class="history-arrow-glyph" aria-hidden="true" viewBox="0 0 22 13"><path d="M7 2 2 6.5 7 11M2.5 6.5H20" /></svg></button>
+                <button type="button" id="frettier-redo" aria-label="Rétablir la modification du frettier" title="Suivant" disabled><svg class="history-arrow-glyph" aria-hidden="true" viewBox="0 0 22 13"><path d="m15 2 5 4.5-5 4.5M2 6.5h17.5" /></svg></button>
+              </div>
+            </div>
+          </div>
+
+
+<div class="sound-controls audio-toolbar sound-tab-controls" id="sound-controls" role="group" aria-label="Commandes sonores" hidden>
+<div class="audio-transport-controls">
+<button
+type="button"
+class="sound-mute-button sound-quick-control"
+id="sound-mute-button"
+aria-label="Couper le son"
+aria-pressed="false"
+data-keyboard-hint="clavier : barre d’espace pour arrêter les sons"
+title="Couper le son"
+>
+<svg aria-hidden="true" viewBox="0 0 24 24">
+<path class="sound-speaker" d="M4 9h4l5-4v14l-5-4H4z"></path>
+<path class="sound-wave" d="M16 9.2c1.2 1.5 1.2 4.1 0 5.6M18.8 6.8c2.6 2.8 2.6 7.6 0 10.4"></path>
+<path class="sound-muted-mark" d="m16 9 5 6m0-6-5 6"></path>
+</svg>
+</button>
+<input class="sound-volume-slider" id="sound-volume" type="range" min="0" max="100" step="1" value="100" aria-label="Volume sonore" title="Volume 100 %" />
+<button type="button" class="audio-stop-button" id="audio-stop" title="Tout arrêter — barre d’espace" aria-label="Arrêter tous les sons"><svg aria-hidden="true" viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="0.5"></rect></svg></button>
+</div>
+<label class="sound-timbre-control">
+<span class="visually-hidden">Timbre</span>
+<select id="audio-instrument" aria-label="Timbre des prochains sons">
+<optgroup label="Claviers">
+<option value="piano">Piano</option>
+<option value="lofi">Piano lo-fi</option>
+</optgroup>
+<optgroup label="Cordes">
+<option value="strings">Cordes</option>
+</optgroup>
+<optgroup label="Ondes">
+<option value="sawtooth">Scie</option>
+<option value="sine">Sinus</option>
+</optgroup>
+<optgroup label="Synthèse">
+<option value="synth-strings">Cordes synthétiques</option>
+<option value="pad">Tenue filtrée</option>
+<option value="analog">Analogique</option>
+<option value="glass">Cloche harmonique</option>
+</optgroup>
+<optgroup label="Anches et tuyaux">
+<option value="harmonium">Harmonium</option>
+<option value="organ">Orgue à tuyaux</option>
+<option value="organ-sampled">Orgue enregistré</option>
+</optgroup>
+<optgroup label="Bourdon">
+<option value="tanpura">Tanpura</option>
+</optgroup>
+</select>
+</label>
+<div class="sound-octave-control" role="group" aria-label="Octave des prochains sons" title="Octave">
+<span class="sound-octave-label">Oct.</span>
+<div class="sound-octave-buttons">
+<output class="sound-octave-value" id="sound-octave-value" aria-live="polite" title="clavier : tonique a">0</output>
+<span class="sound-octave-steppers">
+<button type="button" data-audio-octave-step="1" data-keyboard-hint="clavier : tonique q" aria-label="Monter d’une octave">▲</button>
+<button type="button" data-audio-octave-step="-1" data-keyboard-hint="clavier : tonique z" aria-label="Descendre d’une octave">▼</button>
+</span>
+</div>
+</div>
+<div class="audio-mouse-mode" role="group" aria-label="Notes jouées à la souris">
+<button type="button" data-audio-mouse-mode="poly" aria-pressed="true" title="Plusieurs notes ; recliquer pour arrêter">Poly</button>
+<button type="button" data-audio-mouse-mode="mono" aria-pressed="false" title="Une seule note à la souris">Mono</button>
+</div>
+<details class="audio-settings-menu">
+<summary aria-label="Réglages du son" title="Réglages du son"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M3 6h9M15 6h2M3 14h3M9 14h8"></path><circle cx="13.5" cy="6" r="1.8"></circle><circle cx="7.5" cy="14" r="1.8"></circle></svg></summary>
+<div class="audio-settings-popover">
+<p class="audio-settings-title">Réglages — <span id="audio-settings-timbre">Scie</span></p>
+<label class="sound-option-row audio-setting-row" for="audio-brightness">
+<span>Brillance</span>
+<span class="sound-volume-entry">
+<input id="audio-brightness" type="range" min="0" max="100" step="1" value="0" />
+<output id="audio-brightness-value" for="audio-brightness"></output>
+</span>
+</label>
+<label class="sound-option-row audio-setting-row" for="audio-reverb">
+<span>Réverbération</span>
+<span class="sound-volume-entry">
+<input id="audio-reverb" type="range" min="0" max="100" step="1" value="0" />
+<output id="audio-reverb-value" for="audio-reverb"></output>
+</span>
+</label>
+<div class="audio-lofi-settings" id="audio-lofi-settings" hidden>
+<label class="sound-option-row audio-setting-row" for="audio-wear">
+<span>Usure</span>
+<span class="sound-volume-entry">
+<input id="audio-wear" type="range" min="0" max="100" step="1" value="0" />
+<output id="audio-wear-value" for="audio-wear"></output>
+</span>
+</label>
+<label class="sound-option-row audio-setting-row" for="audio-hiss">
+<span>Souffle</span>
+<span class="sound-volume-entry">
+<input id="audio-hiss" type="range" min="0" max="100" step="1" value="0" />
+<output id="audio-hiss-value" for="audio-hiss"></output>
+</span>
+</label>
+<label class="sound-option-row audio-setting-row" for="audio-wow">
+<span>Pleurage</span>
+<span class="sound-volume-entry">
+<input id="audio-wow" type="range" min="0" max="25" step="1" value="0" />
+<output id="audio-wow-value" for="audio-wow"></output>
+</span>
+</label>
+<p class="audio-settings-note">Le pleurage fait osciller légèrement la hauteur; à zéro, les rapports restent parfaitement fixes. Usure et pleurage s’appliquent aux notes suivantes.</p>
+</div>
+<div class="audio-tanpura-settings" id="audio-tanpura-settings" hidden>
+<label class="sound-option-row audio-setting-row" for="audio-sweep">
+<span>Balayage</span>
+<span class="sound-volume-entry">
+<input id="audio-sweep" type="range" min="0" max="100" step="1" value="40" />
+<output id="audio-sweep-value" for="audio-sweep"></output>
+</span>
+</label>
+<p class="audio-settings-note">Le balayage fait monter et descendre le bourdonnement du jawari dans le spectre; à zéro, il reste immobile. La hauteur ne bouge jamais.</p>
+</div>
+<div class="audio-settings-play" aria-label="Jeu">
+<div class="sound-option-row audio-setting-row">
+<span>Au clic</span>
+<span class="audio-mouse-mode" role="group" aria-label="Notes jouées à la souris">
+<button type="button" data-audio-mouse-mode="poly" aria-pressed="true" title="Plusieurs notes ; recliquer pour arrêter">Poly</button>
+<button type="button" data-audio-mouse-mode="mono" aria-pressed="false" title="Une seule note à la souris">Mono</button>
+</span>
+</div>
+<p class="audio-settings-note">Clavier : la touche A joue le 1/1 du réseau, la rangée A S D F… monte dans les hauteurs de la touche, Q W E… continue au-dessus, Z X C… joue en dessous; barre d’espace pour tout arrêter.</p>
+</div>
+<button type="button" class="audio-settings-reset" id="audio-settings-reset">Réglages d’origine de ce timbre</button>
+<p class="audio-credits">
+Chaque timbre garde ses propres réglages. Échantillons :
+<span class="audio-credit-line"><a href="https://archive.org/details/SalamanderGrandPianoV3" target="_blank" rel="noreferrer">Piano — Salamander Grand Piano V3, Alexander Holm</a> (CC BY 3.0)</span>
+<span class="audio-credit-line"><a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noreferrer">Violoncelles et altos — VSCO 2 Community Edition, Versilian Studios</a> (CC0)</span>
+<span class="audio-credit-line"><a href="https://github.com/sgossner/VCSL" target="_blank" rel="noreferrer">Orgue enregistré — orgue Renaissance, VCSL, Simon Dalzell (Ivy Audio)</a> (CC0)</span>
+Les autres timbres (dont l’analogique, l’harmonium, l’orgue à tuyaux et la tanpura) sont calculés en direct.
+</p>
+</div>
+</details>
+<p class="sound-hover-hint" id="sound-hover-hint" aria-live="polite"></p>
+<p class="sound-load-status" id="sound-load-status" aria-live="polite"></p>
+</div>
+          <button type="button" class="toolbar-control frettier-save-button" id="frettier-save-button"
+            title="Sauvegarder cette touche et toutes ses hauteurs comme réseau">Sauvegarder</button>
+          <span class="frettier-save-status" id="frettier-save-status" role="status" aria-live="polite"></span>
+          </div>
+        </div>
+      </header>
+
+      <div class="content-surface" id="modes-page-panel" role="tabpanel" aria-labelledby="app-title">
+        <div class="network-layout">
+          <button type="button" id="modes-sidebar-toggle" class="modes-sidebar-toggle" aria-controls="primary-selection" aria-expanded="true" aria-label="Replier le panneau de sélection" title="Replier le panneau de sélection" hidden><span class="panel-handle-icon" aria-hidden="true"><svg viewBox="0 0 18 18" focusable="false"><rect x="2.5" y="3.5" width="13" height="11" rx="2"/><path class="panel-handle-pane" d="M4.5 5.5h2v7h-2z"/><path d="M8 3.5v11"/></svg></span></button>
+          <aside class="primary-selection" id="primary-selection" hidden aria-label="Tonique et sélection harmonique">
+            <div class="selection-controls-row">
+            <div class="mode-control" id="mode-control" hidden>
+              <div class="tonic-control-row">
+                <div class="primary-history-controls">
+                  <button type="button" class="page-refresh" id="page-refresh" aria-label="Actualiser la page et revenir à son état initial" title="Actualiser la page — revenir à l’état initial"><svg class="history-arrow-glyph refresh-glyph" aria-hidden="true" viewBox="0 0 20 20"><path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6"/><path d="M15.2 2.4v3.4h-3.4"/></svg></button>
+                  <div class="history-navigation" role="group" aria-label="Historique de navigation">
+                    <button type="button" id="history-back" aria-label="Revenir à la sélection précédente" title="Précédent — Ctrl+Z" disabled><svg class="history-arrow-glyph" aria-hidden="true" viewBox="0 0 22 13"><path d="M7 2 2 6.5 7 11M2.5 6.5H20" /></svg></button>
+                    <button type="button" id="history-forward" aria-label="Rétablir la sélection suivante" title="Suivant — Ctrl+Y" disabled><svg class="history-arrow-glyph" aria-hidden="true" viewBox="0 0 22 13"><path d="m15 2 5 4.5-5 4.5M2 6.5h17.5" /></svg></button>
+                  </div>
+                </div>
+                <div class="tonic-choice">
+                  <button
+                    type="button"
+                    class="selection-summary"
+                    id="selection-summary"
+                    hidden
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="tonic-menu-popover"
+                    aria-live="polite"
+                  ></button>
+                  <div class="tonic-menu-popover" id="tonic-menu-popover" role="listbox" hidden></div>
+                </div>
+                <div class="tonic-navigation" role="group" aria-label="Déplacer la tonique dans le Réseau">
+                  <button type="button" data-tonic-step="left" class="tonic-direction-3" aria-label="Gauche — dimension 3" disabled><span aria-hidden="true">◀</span></button>
+                  <button type="button" data-tonic-step="right" class="tonic-direction-3" aria-label="Droite — dimension 3" disabled><span aria-hidden="true">▶</span></button>
+                  <button type="button" data-tonic-step="up" class="tonic-direction-5" aria-label="Haut — dimension 5" disabled><span aria-hidden="true">▲</span></button>
+                  <button type="button" data-tonic-step="down" class="tonic-direction-5" aria-label="Bas — dimension 5" disabled><span aria-hidden="true">▼</span></button>
+                  <button type="button" data-tonic-step="up-right" class="tonic-direction-7" aria-label="Diagonale haut-droite — dimension 7" disabled><span aria-hidden="true">▶</span></button>
+                  <button type="button" data-tonic-step="down-left" class="tonic-direction-7" aria-label="Diagonale bas-gauche — dimension 7" disabled><span aria-hidden="true">◀</span></button>
+                </div>
+              </div>
+              <div class="mode-selection-row">
+                <div class="mode-choice chord-choice-menu">
+                  <select class="visually-hidden" id="mode-select" aria-label="Sélection harmonique disponible" tabindex="-1"></select>
+                  <button
+                    type="button"
+                    class="mode-menu-button"
+                    id="mode-menu-button"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="mode-menu-popover"
+                    aria-label="Choisir un mode"
+                  >
+                    <span id="mode-menu-label">Modes</span>
+                    <span class="menu-caret" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="mode-menu-popover" id="mode-menu-popover" role="listbox" hidden></div>
+                </div>
+                <div class="selection-navigation" role="group" aria-label="Parcourir les catégories et les éléments du menu">
+                  <button type="button" data-selection-step="left" aria-label="Catégorie précédente" title="Catégorie précédente" disabled><span aria-hidden="true">◀</span></button>
+                  <button type="button" data-selection-step="up" aria-label="Élément précédent" title="Élément précédent" disabled><span aria-hidden="true">▲</span></button>
+                  <button type="button" data-selection-step="down" aria-label="Élément suivant" title="Élément suivant" disabled><span aria-hidden="true">▼</span></button>
+                  <button type="button" data-selection-step="right" aria-label="Catégorie suivante" title="Catégorie suivante" disabled><span aria-hidden="true">▶</span></button>
+                </div>
+              </div>
+              <div class="mode-variant-selector" id="mode-variant-selector" role="group" aria-label="Limite harmonique"></div>
+            </div>
+
+            <div class="selection-kind-switch" role="group" aria-label="Choisir le menu des intervalles, des tétracordes, des accords ou des modes">
+              <button type="button" data-harmonic-view="intervalles" aria-pressed="true">Intervalles</button>
+              <button type="button" data-harmonic-view="accords" aria-pressed="false">Accords</button>
+              <button type="button" data-harmonic-view="tetracordes" aria-pressed="false">Tétracordes</button>
+              <button type="button" data-harmonic-view="modes" aria-pressed="false">Modes</button>
+            </div>
+            <section class="mode-rotation-control" id="mode-rotation-control" hidden aria-label="Rotation modale exacte">
+              <div class="mode-rotation-details" id="mode-rotation-details" aria-live="polite"></div>
+            </section>
+            </div>
+
+            <section class="modulation-control" id="modulation-control" hidden aria-label="Analyse des modulations">
+              <div class="modulation-heading-row">
+                <div class="modulation-confirmation-actions">
+                  <button type="button" class="confirm-modulation" id="confirm-modulation" disabled>Confirmer</button>
+                  <button type="button" class="cancel-modulation" id="cancel-modulation" disabled>Annuler</button>
+                </div>
+                <div class="modulation-column-navigation" id="modulation-column-navigation" role="group" aria-label="Parcourir les colonnes" hidden>
+                  <button type="button" id="modulation-column-previous" aria-label="Colonne précédente" title="Colonne précédente" disabled><svg class="history-arrow-glyph" aria-hidden="true" viewBox="0 0 22 13"><path d="M7 2 2 6.5 7 11M2.5 6.5H20" /></svg></button>
+                  <button type="button" id="modulation-column-next" aria-label="Colonne suivante" title="Colonne suivante" disabled><svg class="history-arrow-glyph" aria-hidden="true" viewBox="0 0 22 13"><path d="m15 2 5 4.5-5 4.5M2 6.5h17.5" /></svg></button>
+                  <output class="visually-hidden" id="modulation-column-position" aria-live="polite"></output>
+                </div>
+                <button
+                  type="button"
+                  class="modulation-expand-button"
+                  id="modulation-expand-button"
+                  aria-label="Agrandir le tableau des modulations"
+                  aria-controls="modulation-panel"
+                  aria-expanded="false"
+                  title="Afficher toutes les colonnes"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 20 20">
+                    <path d="M3.5 8V3.5H8M12 3.5h4.5V8M16.5 12v4.5H12M8 16.5H3.5V12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="modulation-panel" id="modulation-panel">
+                <div class="modulation-list" id="modulation-list" aria-live="polite"></div>
+              </div>
+            </section>
+          </aside>
+
+          <div class="analysis-column">
+            <div class="graph-workspace">
+              <div class="panel-toolbar graph-panel-toolbar">
+                <div class="graph-select-control">
+                  <select id="graph-display-select" aria-label="Notes du graphique">
+                    <option value="heji">HEJI</option>
+                    <option value="ratio">Ratios</option>
+                    <option value="heji-cents">HEJI + cents</option>
+                    <option value="degrees">Degrés</option>
+                    <option value="none">Aucun</option>
+                  </select>
+                  <span class="menu-caret" aria-hidden="true"></span>
+                </div>
+                <div class="graph-select-control">
+                  <select id="graph-view-select" aria-label="Vue du graphique">
+                    <option value="mode">Mode</option>
+                    <option value="mode-network">Mode + Réseau</option>
+                    <option value="tonics">Toniques</option>
+                    <option value="network">Réseau complet</option>
+                  </select>
+                  <span class="menu-caret" aria-hidden="true"></span>
+                </div>
+                <div class="options-control graph-options-control">
+                  <button type="button" class="options-button" id="options-button" aria-expanded="false" aria-controls="options-popover">Options</button>
+                  <div class="options-popover" id="options-popover" role="dialog" aria-label="Options du graphique" hidden>
+              <section class="graph-options" id="graph-options" aria-label="Réglages du graphique">
+                <div class="network-options graph-options-content">
+                  <div class="options-subsection" role="group" aria-labelledby="graph-axes-title">
+                    <strong class="options-subsection-title" id="graph-axes-title">Axes</strong>
+                    <label class="option-row" for="graph-system">
+                      <span>Disposition</span>
+                      <select id="graph-system" aria-label="Coordonnées des graphiques">
+                        <option value="simon1">Simon Martin 1</option>
+                        <option value="simon">Simon Martin 2</option>
+                        <option value="grady">Kraig Grady</option>
+                      </select>
+                    </label>
+                    <div class="graph-coordinates" role="group" aria-labelledby="graph-coordinates-title">
+                      <span class="graph-coordinates-title" id="graph-coordinates-title">Coordonnées (x, y)</span>
+                      <div class="graph-coordinate-list">
+                        <div class="graph-coordinate-row"><span class="axis-three">3</span><output id="graph-coordinate-3">(13, 0)</output></div>
+                        <div class="graph-coordinate-row"><span class="axis-five">5</span>
+                          <div class="graph-coordinate-five-value">
+                            <output id="graph-coordinate-5">(0, 13)</output>
+                            <div class="axis-length-option" id="axis-length-option">
+                              <div class="level-switch" role="group" aria-label="Valeurs prédéfinies de la coordonnée y de l’axe 5">
+                                <button type="button" data-simon-axis-5-length="13" aria-pressed="true">Normale (13)</button>
+                                <button type="button" data-simon-axis-5-length="16" aria-pressed="false">Allongée (16)</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="graph-coordinate-row"><span class="axis-seven">7</span><output id="graph-coordinate-7">(5, 5)</output></div>
+                        <div class="graph-coordinate-row"><span class="axis-eleven">11</span><output id="graph-coordinate-11">(4, 1)</output></div>
+                        <div class="graph-coordinate-row"><span class="axis-thirteen">13</span><output id="graph-coordinate-13">(1, 4)</output></div>
+                      </div>
+                    </div>
+                    <div class="option-row">
+                      <span>Niveau de connexion</span>
+                      <div class="level-switch" role="group" aria-label="Niveau de connexion du réseau">
+                        <button type="button" data-connection-level="1" aria-pressed="true">1</button>
+                        <button type="button" data-connection-level="2" aria-pressed="false">2</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="options-subsection" role="group" aria-labelledby="graph-labels-title">
+                    <strong class="options-subsection-title" id="graph-labels-title">Étiquettes</strong>
+                    <label class="option-row" for="text-size">
+                      <span>Taille</span>
+                      <input
+                        id="text-size"
+                        aria-label="Taille du texte et des points du réseau"
+                        type="number"
+                        min="0.5"
+                        max="4"
+                        step="0.1"
+                        value="2"
+                      />
+                    </label>
+
+                    <label class="option-row" for="text-offset">
+                      <span>Décalage</span>
+                      <input
+                        id="text-offset"
+                        aria-label="Décalage vertical du texte du réseau"
+                        type="number"
+                        min="0"
+                        max="6"
+                        step="0.1"
+                        value="2"
+                      />
+                    </label>
+
+                    <label class="option-row label-toggle" for="targeted-label-mask" title="Masque les lignes qui traversent les étiquettes.">
+                      <span>Effacer l’arrière-plan</span>
+                      <input id="targeted-label-mask" type="checkbox" />
+                    </label>
+                  </div>
+                </div>
+              </section>
+                    <div class="options-default-actions">
+                      <button type="button" id="options-save-default" title="Conserve une référence de tous les réglages, y compris le son et le tableau">Enregistrer comme référence</button>
+                      <button type="button" id="options-restore-factory" title="Rétablit tous les réglages, y compris le son et le tableau">Rétablir tous les paramètres d’origine</button>
+                    </div>
+                    <p class="options-default-status" id="options-default-status" role="status" aria-live="polite"></p>
+                  </div>
+                </div>
+              </div>
+              <section class="tonic-network-graph-panel" id="tonic-network-graph-panel" hidden aria-labelledby="tonic-network-graph-title">
+                <h2 class="visually-hidden" id="tonic-network-graph-title">Réseau des toniques</h2>
+                <div class="tonic-mini-map-shell">
+                  <div class="tonic-mini-map" id="tonic-mini-map" aria-label="Sélectionner directement une tonique dans le réseau"></div>
+                </div>
+              </section>
+
+              <section class="network-board selection-graph-panel" id="selection-graph-panel" aria-labelledby="network-title">
+                <h2 class="visually-hidden" id="network-title">Graphique de la sélection</h2>
+                <p class="visually-hidden" id="network-status" aria-live="polite"></p>
+
+                <div class="network-scroll" id="network-scroll">
+                  <div
+                    class="network-stage"
+                    id="network-stage"
+                    aria-label="Réseau harmonique des rapports selon leurs facteurs premiers"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="network-lines"
+                      id="network-lines"
+                      preserveAspectRatio="xMidYMid meet"
+                      viewBox="0 0 1000 620"
+                    ></svg>
+                    <div id="network-nodes"></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <section class="mode-table-section chord-table-section" id="mode-table-section" hidden aria-labelledby="mode-table-region-label mode-table-title">
+              <span class="visually-hidden" id="mode-table-region-label">Tableau</span>
+              <span class="table-tonic-marker" id="table-tonic-marker" aria-hidden="true" hidden></span>
+              <div class="panel-toolbar table-panel-toolbar">
+                <details class="window-display-menu table-display-menu" id="table-display-menu">
+                  <summary>Affichage<span class="menu-caret" aria-hidden="true"></span></summary>
+                  <div class="window-display-options" role="group" aria-label="Contenu du tableau">
+                    <label><input type="checkbox" id="table-show-mode-name"> Nom du mode</label>
+                    <label><input type="checkbox" id="table-show-cents"> Cents</label>
+                    <label><input type="checkbox" id="table-show-chords" checked> Degrés et accords</label>
+                    <label><input type="checkbox" id="table-show-ratios" checked> Ratios</label>
+                    <label><input type="checkbox" id="table-show-tetrachords" checked> Tétracordes</label>
+                    <label><input type="checkbox" id="table-show-intervals" checked> Intervalles</label>
+                    <div class="table-fifths-controls" id="table-fifths-controls" role="group" aria-label="Séquence de quintes">
+                      <div class="table-fifths-stepper">
+                        <span id="table-fifths-above-label">Quintes supérieures</span>
+                        <button type="button" id="table-fifths-above-minus" aria-label="Retirer une quinte supérieure">−</button>
+                        <output id="table-fifths-above-count" aria-labelledby="table-fifths-above-label" aria-live="polite">0</output>
+                        <button type="button" id="table-fifths-above-plus" aria-label="Ajouter une quinte supérieure">+</button>
+                      </div>
+                      <div class="table-fifths-stepper">
+                        <span id="table-fifths-below-label">Quintes inférieures</span>
+                        <button type="button" id="table-fifths-below-minus" aria-label="Retirer une quinte inférieure">−</button>
+                        <output id="table-fifths-below-count" aria-labelledby="table-fifths-below-label" aria-live="polite">0</output>
+                        <button type="button" id="table-fifths-below-plus" aria-label="Ajouter une quinte inférieure">+</button>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+              <div class="mode-table-scroll" id="mode-table-scroll">
+                <div class="mode-table-heading visually-hidden" id="mode-table-heading">
+                  <h2 id="mode-table-title"></h2>
+                </div>
+                <div id="mode-table-content"></div>
+              </div>
+            </section>
+            <p class="modes-window-empty" id="modes-window-empty" hidden>Aucune fenêtre affichée. Utilisez « Affichage » pour en ouvrir une.</p>
+          </div>
+        </div>
+      </div>
+      <section id="network-analysis-panel" class="network-analysis-shell" role="tabpanel" aria-labelledby="analysis-tab" hidden>
+        <iframe id="network-analysis-frame" title="Analyse du réseau" data-src="../frettier/index.html?vue=analyse-reseau"></iframe>
+      </section>
+      <section id="network-summary-panel" class="network-summary-shell" role="tabpanel" aria-labelledby="summary-tab" hidden>
+        <aside class="summary-toc" aria-labelledby="summary-toc-title">
+          <strong id="summary-toc-title">Table des matières</strong>
+          <nav id="summary-toc-links" aria-labelledby="summary-toc-title"></nav>
+        </aside>
+        <div class="summary-document-viewport">
+          <article class="summary-document" id="summary-document" aria-live="polite"></article>
+        </div>
+      </section>
+      <!-- Touche TFE sans scordatura choisie hors du Frettier (Simon, 19 octobre 2026) : seul ce message s'affiche. -->
+      <section id="fret-template-notice" class="fret-template-notice" role="status" hidden>
+        <p>Attribuer une scordatura dans le Frettier et sauvegarder pour appliquer.</p>
+        <button type="button" id="fret-template-open-frettier">Ouvrir dans le Frettier</button>
+      </section>
+      <section id="frettier-panel" class="frettier-shell" role="tabpanel" aria-labelledby="frettier-tab" hidden>
+        <iframe id="frettier-frame" title="Frettier" data-src="../frettier/index.html"></iframe>
+      </section>
+    </main>
+
+    <aside class="network-config-drawer" id="network-config-drawer" hidden aria-labelledby="network-config-title">
+      <div class="network-config-sidebar">
+      <header class="network-config-header">
+        <div class="network-config-title-row">
+          <h2 id="network-config-title">Réseau</h2>
+          <button type="button" class="network-config-close" id="network-config-close" aria-label="Fermer la configuration"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>
+        <div class="network-config-select-row">
+          <div class="network-preset-picker" id="network-preset-picker">
+            <select id="network-preset-select" class="visually-hidden" aria-hidden="true" tabindex="-1"></select>
+            <button type="button" id="network-preset-button" class="network-preset-button" aria-label="Réseau actif" aria-haspopup="menu" aria-expanded="false" aria-controls="network-preset-menu">
+              <span class="network-preset-button-label"></span><span class="network-preset-caret" aria-hidden="true"></span>
+            </button>
+            <div id="network-preset-menu" class="network-preset-menu" role="menu" aria-label="Réseaux" hidden></div>
+          </div>
+          <input id="network-name-input" class="network-header-name" type="text" maxlength="60" aria-label="Nom du réseau" hidden />
+          <span id="network-dirty-indicator" class="network-dirty-indicator" title="Modifications non enregistrées" hidden>●</span>
+        </div>
+        <div class="network-config-heading">
+          <div class="network-config-tools" role="group" aria-label="Gestion des réseaux">
+            <button type="button" id="network-new-button" aria-label="Nouveau réseau" title="Nouveau réseau"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button type="button" id="network-duplicate-button" aria-label="Dupliquer ce réseau" title="Dupliquer ce réseau"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="12" height="12" rx="1"/><path d="M5 15H4V4h11v1M15 12v6m-3-3h6"/></svg></button>
+            <button type="button" id="network-rename-button" aria-label="Renommer ce réseau" title="Renommer ce réseau"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5l1-4.2L16 4.8l3.2 3.2L8.7 18.5l-4.2 1zM13.8 7l3.2 3.2"/></svg></button>
+            <button type="button" id="network-save-button" class="is-primary" aria-label="Enregistrer et quitter" title="Enregistrer et quitter" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h13l3 3v13H4zM8 4v6h8V4M8 20v-7h8v7"/></svg></button>
+            <button type="button" id="network-delete-button" class="is-danger" aria-label="Supprimer ce réseau" title="Supprimer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 10v7m4-7v7"/></svg></button>
+          </div>
+          <div class="network-config-history" role="group" aria-label="Historique de la configuration">
+            <button type="button" id="network-config-undo" aria-label="Annuler la dernière modification" title="Annuler" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m5-5-5 5 5 5"/></svg></button>
+            <button type="button" id="network-config-redo" aria-label="Rétablir la modification" title="Rétablir" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>
+            <button type="button" id="network-config-reset" aria-label="Rétablir la configuration à l’ouverture du panneau" title="Rétablir à l’ouverture" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2-4.9"/><path d="M17.5 3.6v3.7h-3.7"/></svg></button>
+          </div>
+        </div>
+      </header>
+
+      <div class="network-config-body">
+        <div class="network-config-pitches">
+        <div class="network-pitch-group" role="group" aria-labelledby="network-diapason-title">
+          <h3 id="network-diapason-title">Diapason :</h3>
+        <div class="network-config-pitch-line is-diapason">
+          <span class="network-fixed-note" aria-label="La bécarre">♮A</span>
+          <span class="network-pitch-equals" aria-hidden="true">=</span>
+          <span class="network-config-unit"><input id="network-diapason-input" type="number" min="400" max="480" step="1" inputmode="numeric" aria-label="Fréquence entière du diapason" /><span>Hz</span></span>
+        </div>
+        </div>
+        <div class="network-pitch-group" role="group" aria-labelledby="network-default-tonic-title">
+          <h3 id="network-default-tonic-title">Tonique par défaut :</h3>
+        <div class="network-config-pitch-line is-default-tonic">
+          <span class="network-fixed-ratio" aria-label="Rapport fixe 1/1">1/1</span>
+          <span class="network-pitch-equals" aria-hidden="true">=</span>
+          <div class="network-pitch-picker is-default-tonic">
+            <button type="button" id="network-generator-note" aria-label="Note de la tonique par défaut" aria-haspopup="listbox" aria-expanded="false" aria-controls="network-generator-note-menu"></button>
+            <div class="network-pitch-menu" id="network-generator-note-menu" role="listbox" hidden></div>
+          </div>
+        </div>
+        </div>
+        </div>
+
+        <div class="network-method-switch network-start-choices" role="group" aria-label="Point de départ du nouveau réseau">
+          <button type="button" id="network-method-configure" aria-pressed="false" aria-controls="network-configure-panel"><strong>Par familles et harmoniques</strong><span>Choisir les familles de toniques et leurs harmoniques.</span></button>
+          <button type="button" id="network-method-scala" aria-pressed="true" aria-controls="network-scala-panel"><strong>Par liste de rapports</strong><span>Écrire ou coller les rapports, un par ligne.</span></button>
+          <button type="button" id="network-method-frettier"><strong>À partir d’une touche</strong><span>Construire la touche dans le Frettier, puis « Sauvegarder ».</span></button>
+        </div>
+        <p id="network-locked-method-label" class="network-locked-method-label" hidden></p>
+        <section class="network-config-section" id="network-scala-panel" aria-label="Liste de rapports">
+          <textarea id="network-scala-input" class="network-scala-input" rows="10" maxlength="32768" spellcheck="false" aria-label="Ratios du réseau, un par ligne, en terminant par 2/1" aria-describedby="network-scala-status"></textarea>
+          <p class="network-config-status network-data-error" id="network-scala-status" role="alert"></p>
+        </section>
+
+        <div id="network-configure-panel" class="network-configure-panel" hidden>
+          <section class="network-config-section network-config-main-section">
+            <details>
+              <summary id="network-families-title">Toniques</summary>
+              <div id="network-family-config"></div>
+            </details>
+            <div id="network-family-bulk" class="network-config-bulk-actions"></div>
+          </section>
+
+          <section id="network-functions-section" class="network-config-section network-config-main-section">
+            <details>
+              <summary id="network-harmonics-title">Fonctions modales</summary>
+              <div id="network-function-config"></div>
+            </details>
+            <div id="network-function-bulk" class="network-config-bulk-actions"></div>
+          </section>
+
+          <section class="network-config-section network-config-main-section">
+            <details>
+              <summary id="network-modes-title">Modes</summary>
+              <div id="network-mode-config"></div>
+            </details>
+            <div id="network-mode-bulk" class="network-config-bulk-actions"></div>
+          </section>
+
+          <section id="network-data-export-section" class="network-config-section network-data-export" aria-labelledby="network-copy-data-title">
+            <button type="button" id="network-copy-data-button" class="network-copy-data-button"><span id="network-copy-data-title">Copier les données résultantes</span></button>
+            <p id="network-copy-data-status" class="network-config-status" role="status" aria-live="polite"></p>
+          </section>
+        </div>
+
+        <button type="button" class="network-scala-apply" id="network-scala-apply" disabled>Enregistrer et quitter</button>
+
+        <p class="network-config-status" id="network-config-status" aria-live="polite"></p>
+
+      </div>
+      </div>
+      <section class="network-preview" aria-label="Aperçu du réseau">
+        <div id="network-preview-graph" class="network-preview-graph"></div>
+        <p id="network-preview-status" class="network-preview-status visually-hidden" role="status" aria-live="polite"></p>
+      </section>
+    </aside>
+
+    <dialog id="frettier-save-dialog" class="network-unsaved-dialog frettier-save-dialog" aria-labelledby="frettier-save-title">
+      <form id="frettier-save-form">
+        <h2 id="frettier-save-title">Sauvegarder cette touche ?</h2>
+        <dl class="frettier-save-details">
+          <dt>Modèle</dt><dd id="frettier-save-model"></dd>
+          <dt>Scordatura</dt><dd id="frettier-save-scordatura"></dd>
+          <dt>Tonique 1/1</dt><dd id="frettier-save-reference"></dd>
+        </dl>
+        <label class="frettier-save-name-label" for="frettier-save-name">Nom de la sauvegarde</label>
+        <input id="frettier-save-name" name="name" type="text" maxlength="140" required autocomplete="off" />
+        <p id="frettier-save-feedback" role="status" aria-live="polite"></p>
+        <div class="network-unsaved-actions">
+          <button type="button" id="frettier-save-cancel">Annuler</button>
+          <button type="submit" id="frettier-save-confirm" class="is-primary">Sauvegarder</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="network-unsaved-dialog" class="network-unsaved-dialog" aria-labelledby="network-unsaved-title">
+      <div class="network-unsaved-heading">
+        <h2 id="network-unsaved-title">Modifications non enregistrées</h2>
+        <button type="button" id="network-unsaved-continue" class="network-unsaved-close" aria-label="Continuer la modification" title="Continuer la modification">×</button>
+      </div>
+      <div class="network-unsaved-actions">
+        <button type="button" id="network-unsaved-discard">Ignorer</button>
+        <button type="button" id="network-unsaved-save" class="is-primary">Enregistrer</button>
+      </div>
+    </dialog>
+
+    <dialog id="network-update-dialog" class="network-unsaved-dialog" aria-labelledby="network-update-title">
+      <div class="network-unsaved-heading">
+        <h2 id="network-update-title"></h2>
+      </div>
+      <div class="network-unsaved-actions">
+        <button type="button" id="network-update-cancel">Annuler</button>
+        <button type="button" id="network-update-rename">Renommer</button>
+        <button type="button" id="network-update-confirm" class="is-primary">Oui</button>
+      </div>
+    </dialog>
+
+    <script src="../accords/chords-data.js?v=e6585dc9" defer></script>
+    <script src="./mode-chords.js?v=962f68b0" defer></script>
+    <script src="./network-model.js?v=d7cbfef8" defer></script>
+    <script src="./mode-tetrachords.js?v=fb65c15e" defer></script>
+    <script src="./app.js?v=b104b53b" defer></script>
+  </body>
+</html>

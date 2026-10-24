@@ -1,0 +1,117 @@
+/* Accords partage volontairement toute sa géométrie avec Modes.
+   Ce fichier ne contient que les différences propres au contenu harmonique. */
+
+#chord-menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chord-control {
+  --mode-popover-width: 300px;
+}
+
+.chord-menu-characteristic {
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.chord-menu-family-option {
+  justify-content: flex-start;
+}
+
+.chord-menu-family-option .mode-menu-family-limits:empty {
+  display: none;
+}
+
+.chord-table-section {
+  margin-top: 6px;
+}
+
+.chord-table-content-empty {
+  min-height: 120px;
+}
+
+.chord-model {
+  position: relative;
+}
+
+.chord-model .mode-degree-row,
+.chord-model .mode-ratio-row,
+.chord-model .mode-heji-row {
+  grid-template-columns: var(--mode-table-grid);
+}
+
+.chord-model .mode-proportions {
+  min-height: 44px;
+}
+
+.chord-model .proportion-row.is-empty {
+  min-height: 22px;
+}
+
+.network-node.is-implicit-root,
+.chord-model .is-implicit-root {
+  opacity: 0.28;
+}
+
+.network-node.is-implicit-root .node-dot {
+  border-color: var(--muted);
+  background: var(--muted);
+}
+
+.network-node.is-implicit-root .node-label {
+  color: var(--muted);
+}
+
+.chord-equivalence-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  opacity: 0.48;
+  text-align: center;
+}
+
+.chord-equivalence-note .heji-pitch {
+  margin-left: 0.22em;
+}
+
+.chord-model-reference {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+  pointer-events: none;
+}
+
+.chord-interpretation {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.network-node.is-chord-tone .node-dot {
+  transition: width 130ms ease, height 130ms ease, background-color 130ms ease;
+}
+
+.network-node.is-chord-tone:hover .node-dot,
+.network-node.is-chord-tone:focus-visible .node-dot {
+  background: #fff;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--ink);
+}
+
+.network-node.is-chord-tone:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .chord-control {
+    width: min(294px, 100%);
+  }
+}
