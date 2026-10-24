@@ -7095,79 +7095,66 @@ body:not([data-page-tab="frettier"]) [data-fret-template="true"]::after { conten
 .touch-picker-union-table td { font-variant-numeric: tabular-nums; }
 
 
-/* ---------- Pages de projet (répétition), 23 octobre 2026 : seul le matériel du projet reste visible. ---------- */
-body.is-project .app-identity [data-page-tab],
-body.is-project #tonic-instruction,
-body.is-project #top-toolbar-toggle,
-body.is-project #top-settings-toolbar > :not(.tab-toolbar-group),
-body.is-project #top-settings-toolbar .tab-toolbar-group > :not(#sound-controls),
-body.is-project #sound-mute-button,
-body.is-project #sound-volume,
-body.is-project .sound-octave-control,
-body.is-project .audio-mouse-mode,
-body.is-project .audio-settings-menu,
-body.is-project #sound-hover-hint,
+/* ---------- Pages de projet (répétition), 23 octobre 2026; révisé le 24 octobre (Simon) ---------- */
+/* Seul le matériel du projet reste visible : ni barre du haut, ni graphe, ni menus. */
+body.is-project .app-bar,
 body.is-project #modes-sidebar-toggle,
 body.is-project #mode-control,
 body.is-project #mode-rotation-control,
 body.is-project #modulation-control,
 body.is-project #tonic-network-graph-panel,
+body.is-project #selection-graph-panel,
+body.is-project .graph-workspace,
 body.is-project .graph-panel-toolbar,
 body.is-project .table-panel-toolbar,
-body.is-project .selection-controls-row { display: none !important; }
-body.is-project #top-settings-toolbar { display: flex; }
+body.is-project .selection-controls-row,
+body.is-project #table-tonic-marker { display: none !important; }
 body.is-project .primary-selection { overflow-y: auto; }
-/* Les lecteurs prennent leur hauteur au-dessus du graphe et du tableau. */
-body.is-project.has-selection .analysis-column { grid-template-rows: auto minmax(0, 1fr) auto; }
+body.is-project #mode-table-section { align-self: start; align-content: start; padding-top: 18px; }
+body.is-project.has-selection .analysis-column { grid-template-rows: auto minmax(0, 1fr) !important; align-content: start; }
 
-.project-panel { display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 18px; }
+.project-panel { display: flex; flex-direction: column; gap: 6px; padding: 14px 12px 18px; }
 .project-kicker { margin: 0; color: #6b6a66; font-size: var(--fs-1, 12.5px); letter-spacing: 0.05em; text-transform: uppercase; }
 .project-title { margin: 0 0 6px; font-family: "Roboto Slab", Georgia, serif; font-size: 22px; font-weight: 300; }
 .project-heading { margin: 12px 0 2px; font-size: var(--fs-2, 14px); font-weight: 600; }
 .project-subheading { margin: 8px 0 0; font-size: var(--fs-1, 12.5px); font-weight: 400; color: #6b6a66; }
 .project-help { margin: 2px 0 0; color: #6b6a66; font-size: var(--fs-1, 12.5px); line-height: 1.35; }
-.project-item { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%;
-  min-height: 32px; padding: 5px 10px; border: 1px solid var(--line, #d9d6cf); border-radius: 6px; background: #fff;
-  color: inherit; font: inherit; font-size: var(--fs-2, 14px); text-align: left; cursor: pointer; }
-.project-item[aria-pressed="true"] { border-color: #111; background: #111; color: #fff; }
-.project-item-tonics { font-size: var(--fs-1, 12.5px); opacity: 0.75; }
-.project-tetrachord { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px;
-  padding: 3px 0; border-top: 1px solid var(--line, #e6e3dc); }
-.project-tetrachord-name { font-size: var(--fs-2, 14px); }
-.project-tetrachord-tonics { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-.project-item.is-tonic { width: auto; min-width: 34px; min-height: 28px; justify-content: center; padding: 3px 7px; }
+.project-item { width: 100%; min-height: 32px; padding: 5px 10px; border: 1px solid var(--line, #d9d6cf); border-radius: 6px;
+  background: #fff; color: inherit; font: inherit; font-size: var(--fs-2, 14px); text-align: left; cursor: pointer; }
+.project-item[aria-pressed="true"] { border-color: #111; box-shadow: inset 0 0 0 1px #111; background: #f1efe9; }
+.project-sound-row { display: flex; align-items: center; gap: 6px; }
+.project-sound-row .sound-timbre-control { flex: 1; min-width: 0; }
+.project-sound-row #audio-instrument { width: 100% !important; }
+.project-sound-row .fullscreen-toggle { position: static; }
 .project-segmented { display: inline-flex; width: 100%; border: 1px solid var(--line, #d9d6cf); border-radius: 999px; overflow: hidden; background: #fff; }
 .project-segmented button { flex: 1; border: 0; background: transparent; color: inherit; font: inherit;
   font-size: var(--fs-1, 12.5px); padding: 5px 6px; min-height: 30px; cursor: pointer; }
 .project-segmented button[aria-pressed="true"] { background: #111; color: #fff; }
+.project-octave { display: grid; grid-template-columns: 1fr 30px 34px 30px; align-items: center; gap: 4px; font-size: var(--fs-1, 12.5px); }
+.project-octave button { min-height: 28px; border: 1px solid var(--line, #d9d6cf); border-radius: 6px; background: #fff; font: inherit; cursor: pointer; }
+.project-octave-value { text-align: center; font-variant-numeric: tabular-nums; }
 .project-slider { display: grid; grid-template-columns: 1fr 120px; align-items: center; gap: 8px; font-size: var(--fs-1, 12.5px); }
 .project-slider input { width: 100%; accent-color: #111; }
 
-.project-listen { display: grid; align-content: start; gap: 4px; padding: 8px 16px 6px; border-bottom: 1px solid var(--line, #e6e3dc); }
-.project-player { display: grid; grid-template-columns: 130px minmax(220px, 420px) minmax(0, 1fr); align-items: center; gap: 10px; }
+.project-listen { display: grid; align-content: start; gap: 6px; padding: 10px 16px 8px; border-bottom: 1px solid var(--line, #e6e3dc); }
+.project-player { display: grid; grid-template-columns: 120px minmax(220px, 380px) minmax(0, 1fr); align-items: center; gap: 10px; }
 .project-player-title { font-size: var(--fs-2, 14px); }
 .project-player audio { width: 100%; height: 34px; }
 .project-player-missing { display: none; color: #6b6a66; font-size: var(--fs-1, 12.5px); }
 .project-player.is-missing audio { display: none; }
 .project-player.is-missing .project-player-missing { display: block; }
-.project-markers { display: flex; flex-wrap: wrap; gap: 4px; }
-.project-marker { padding: 3px 8px; border: 1px solid var(--line, #d9d6cf); border-radius: 6px; background: #fff;
-  color: #6b6a66; font: inherit; font-size: var(--fs-1, 12.5px); cursor: pointer; }
-.project-marker strong { color: #1d1d1b; font-weight: 600; }
+.project-markers { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.project-sections, .project-letters { display: flex; flex-wrap: wrap; gap: 4px; }
+.project-marker { min-height: 28px; padding: 3px 9px; border: 1px solid var(--line, #d9d6cf); border-radius: 6px; background: #fff;
+  color: #1d1d1b; font: inherit; font-size: var(--fs-1, 12.5px); cursor: pointer; }
+.project-marker.is-section[aria-pressed="true"] { border-color: #111; background: #111; color: #fff; }
+.project-marker.is-letter { min-width: 28px; padding: 3px 6px; font-weight: 600; }
 
 /* Bourdon de chaque rangée, dans la marge gauche du tableau. */
-.mode-model.has-project-drones { margin-left: 104px; }
+.mode-model.has-project-drones { margin-left: 92px; }
 .mode-heji-row { position: relative; }
-.project-drone-anchor { position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%);
-  display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.project-drone-tonic { font-size: var(--fs-2, 14px); color: #6b6a66; }
+.project-drone-anchor { position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); white-space: nowrap; }
 .project-drone-button { min-height: 28px; padding: 3px 10px; border: 1px solid #2f5d50; border-radius: 999px; background: #fff;
   color: #2f5d50; font: inherit; font-size: var(--fs-1, 12.5px); cursor: pointer; }
 .project-drone-button[aria-pressed="true"] { background: #2f5d50; color: #fff; }
 .mode-heji-row.has-project-drone { background: rgba(47, 93, 80, 0.08); }
-
-/* Notes absentes du mode de référence. */
-.mode-heji-cell.is-project-new { background: #fbe9e3; box-shadow: inset 0 0 0 1px #b5462b; border-radius: 4px; }
-.mode-heji-cell.is-project-new .cents-label, .mode-heji-cell.is-project-new [class*="cents"] { color: #b5462b; font-weight: 600; }
-#network-nodes .is-project-new .node-label { color: #b5462b; }
-#network-nodes .is-project-new .node-dot { background: #b5462b; }

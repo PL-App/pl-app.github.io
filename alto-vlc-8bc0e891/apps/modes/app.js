@@ -18625,9 +18625,10 @@ function syncPanelTouchLattice(configuration) {
 // ---------- Pages de projet (répétition), 23 octobre 2026 ----------
 // Modes s'ouvre en « mode projet » quand la page fournit window.HN_PROJET (adresse de donnees.json) ou que
 // l'adresse contient ?projet=<nom> (fichier projets/<nom>/donnees.json). Le projet ne montre que son matériel :
-// enregistrements et repères, le mode de référence sur ses toniques (tableau à rangées de quintes), les
-// tétracordes sur leurs seules toniques, le graphe, le bourdon et les timbres retenus. Tout le reste de Modes
-// est caché; rien n'est enregistré dans le navigateur. Le contenu vient entièrement des données du projet.
+// enregistrements et repères (sections et lettres), le mode de référence et les tétracordes, chacun dans le tableau
+// de Modes avec ses seules toniques en rangées, le bourdon et les timbres retenus. Tout le reste de Modes (barre du
+// haut, graphe, menus, réglages) est caché; rien n'est enregistré dans le navigateur. Révision du 24 octobre 2026
+// (Simon) : sans graphe, sans degrés ni accords, bourdon sur la tonique du mode, octave par + / −.
 
 // Toniques nommées en solfège : naturels pythagoriciens à partir du la (1/1 = la), position sur la chaîne de quintes.
 const PROJECT_TONICS = {
@@ -18636,8 +18637,8 @@ const PROJECT_TONICS = {
   si: { ratio: "9/8", fifths: 5 },
 };
 const projectState = {
-  active: false, data: null, base: "", current: null, drone: null, droneFifth: true, register: null,
-  droneVolume: 70, notesVolume: 70, droneBus: null, referenceMode: null,
+  active: false, data: null, base: "", current: null, drone: null, droneFifth: true, octaveOffset: 0,
+  droneVolume: 70, notesVolume: 70, droneBus: null, rows: null, tetrachordColumns: null,
 };
 
 function projectSourceUrl() {
@@ -18663,45 +18664,52 @@ function projectTonicOctave(audioOctave) {
   return Math.floor(midi / 12) - 1;
 }
 
+// Registre de référence (l'alto : tonique dans l'octave de do3), décalé par le réglage + / −.
 function applyProjectRegister() {
-  if (!projectState.register || !state.selectedTonic) return;
-  state.audioOctave = projectState.register.octave - projectTonicOctave(0);
+  if (!state.selectedTonic) return;
+  state.audioOctave = (projectState.data.sons.octave ?? 3) + projectState.octaveOffset - projectTonicOctave(0);
 }
 
 // ---------- Sélections du projet ----------
 
-function projectReferenceSelection() {
-  const reference = projectState.data.reference;
-  const principal = reference.tonique ?? reference.toniques[Math.min(1, reference.toniques.length - 1)];
-  const offsets = reference.toniques.map((name) => projectTonic(name).fifths - projectTonic(principal).fifths);
-  const tonicRatio = projectTonic(principal).ratio;
-  const mode = projectModeAtTonic(reference.nom, tonicRatio);
-  if (!mode) throw new Error(`Mode introuvable dans le réseau : ${reference.nom}`);
-  projectState.referenceMode = mode;
+// Une sélection = un mode sur plusieurs toniques : le tableau de Modes à rangées de quintes, réduit aux seules
+// rangées demandées. Le rang central (dans la liste) donne la tonique choisie.
+function projectRowsSelection({ mode, rowTonics, principal, columns = null }) {
+  const offsets = rowTonics.map((tonic) => tonic.fifths - principal.fifths);
   return () => {
     Object.assign(state, {
-      catalog: "modes", selectedTonic: tonicRatio, selectedFamily: TONIC_FAMILY_BY_RATIO.get(tonicRatio),
-      selectedModeId: mode.id, tableFifthsBelow: Math.max(0, -Math.min(...offsets)),
-      tableFifthsAbove: Math.max(0, Math.max(...offsets)),
+      catalog: "modes", selectedTonic: principal.modeTonic, selectedFamily: TONIC_FAMILY_BY_RATIO.get(principal.modeTonic),
+      selectedModeId: mode.id, tableFifthsBelow: Math.max(0, -Math.min(...offsets)), tableFifthsAbove: Math.max(0, Math.max(...offsets)),
     });
+    projectState.rows = new Set(rowTonics.map((tonic) => tonic.modeTonic));
+    projectState.tetrachordColumns = columns;
   };
 }
 
-function projectTetrachordSelection(code, tonicName) {
-  const tonicRatio = projectTonic(tonicName).ratio;
-  return () => {
-    const candidates = tetrachordContextCandidates(code, tonicRatio);
-    // Le tétracorde est montré dans le mode de référence quand celui-ci le contient.
-    const context = candidates.find((candidate) => candidate.mode.label === projectState.data.reference.nom) ?? candidates[0];
-    Object.assign(state, {
-      catalog: "tetracordes", selectedTonic: tonicRatio, selectedFamily: TONIC_FAMILY_BY_RATIO.get(tonicRatio),
-      tetrachordSelection: code, tableFifthsAbove: 0, tableFifthsBelow: 0,
-      tetrachordFunctionPreview: null,
-      tetrachordModeContext: context ? {
-        code, anchorTonic: tonicRatio, modeId: context.mode.id, modeTonic: context.modeTonic, lowerIndex: context.lowerIndex,
-      } : null,
-    });
-  };
+function projectReferenceSelection() {
+  const reference = projectState.data.reference;
+  const tonics = reference.toniques.map((name) => ({ name, ...projectTonic(name), modeTonic: projectTonic(name).ratio }));
+  const principal = tonics[Math.floor((tonics.length - 1) / 2)];
+  const mode = projectModeAtTonic(reference.nom, principal.modeTonic);
+  if (!mode) throw new Error(`Mode introuvable dans le réseau : ${reference.nom}`);
+  return projectRowsSelection({ mode, rowTonics: tonics, principal });
+}
+
+// Tétracorde : montré dans le mode qui le contient (le mode de référence s'il le contient), sur la tonique de ce
+// mode pour chacune de ses toniques; les degrés hors du tétracorde passent en filigrane.
+function projectTetrachordSelection(tetrachord) {
+  const first = projectTonic(tetrachord.toniques[0]).ratio;
+  const candidates = tetrachordContextCandidates(tetrachord.nom, first);
+  const context = candidates.find((c) => c.mode.label === projectState.data.reference.nom) ?? candidates[0];
+  if (!context) throw new Error(`Tétracorde introuvable dans le réseau : ${tetrachord.nom}`);
+  const tonics = tetrachord.toniques.map((name) => {
+    const tonic = projectTonic(name);
+    return { name, ...tonic, modeTonic: divideAndReduce(tonic.ratio, context.lowerRatio) };
+  });
+  const principal = tonics[Math.floor((tonics.length - 1) / 2)];
+  const mode = projectModeAtTonic(context.mode.label, principal.modeTonic) ?? context.mode;
+  const columns = { start: context.lowerIndex, length: context.entry.ratios.length, code: tetrachord.nom };
+  return projectRowsSelection({ mode, rowTonics: tonics, principal, columns });
 }
 
 function selectProjectItem(key, apply) {
@@ -18769,9 +18777,8 @@ async function restartProjectDrone() {
 
 function projectDroneFrequency(button) {
   const row = button.closest(".project-drone-anchor")?.projectRow;
-  const cell = state.catalog === "tetracordes"
-    ? row?.querySelector(`.mode-heji-cell[data-audio-ratio="${CSS.escape(audioPitchKey("1/1"))}"]`)
-    : row?.querySelector(".mode-heji-cell[data-audio-relative-ratio]");
+  // Toujours la tonique du mode de la rangée (pour un tétracorde supérieur : ré–la, pas la–mi).
+  const cell = row?.querySelector(".mode-heji-cell[data-audio-relative-ratio]");
   if (!cell) return null;
   return audioFrequency(cell.dataset.audioRelativeRatio, state.audioOctave + Number(cell.dataset.audioRegister ?? 0));
 }
@@ -18823,13 +18830,40 @@ function projectSlider(label, value, onInput) {
   return wrapper;
 }
 
-function parseProjectTime(text) {
-  const [minutes, seconds] = String(text).split(":").map(Number);
-  return minutes * 60 + seconds;
+// Nom avec le code de couleur des limites (Éolien L7, Phryg-12L13, Phryg-60L7m…).
+function projectColorizedName(text) {
+  const wrapper = projectElement("span", "project-name");
+  const match = String(text).match(/^(.*L)(\d+)(\D*)$/);
+  if (!match) { wrapper.textContent = text; return wrapper; }
+  const limit = projectElement("span", "", match[2]);
+  limit.style.color = colorForInteger(match[2]);
+  wrapper.append(document.createTextNode(match[1]), limit, document.createTextNode(match[3]));
+  return wrapper;
+}
+
+// ---------- Repères : sections et lettres, temps calculés d'après la carte de tempo ----------
+
+function projectMeasureTimes(ecoute) {
+  const tempo = ecoute.tempo ?? { noire: 60, mesures: [{ depuis: 1, temps: 4 }] };
+  const meters = [...(tempo.mesures ?? [{ depuis: 1, temps: 4 }])].sort((a, b) => a.depuis - b.depuis);
+  const extras = new Map((tempo.ajouts ?? []).map((extra) => [extra.mesure, extra.secondes]));
+  const beatsOf = (measure) => meters.filter((meter) => meter.depuis <= measure).at(-1)?.temps ?? 4;
+  return (measure) => {
+    let seconds = 0;
+    for (let m = 1; m < measure; m += 1) seconds += beatsOf(m) * 60 / tempo.noire + (extras.get(m) ?? 0);
+    return seconds;
+  };
+}
+
+function projectTimeLabel(seconds) {
+  const whole = Math.round(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
 
 function buildProjectListen() {
   const { ecoute } = projectState.data;
+  const timeAt = projectMeasureTimes(ecoute);
+  const markerTime = (marker) => (marker.temps !== undefined ? marker.temps : timeAt(marker.mesure));
   const section = projectElement("section", "project-listen");
   section.setAttribute("aria-label", "Écouter");
   ecoute.lecteurs.forEach((player) => {
@@ -18844,20 +18878,41 @@ function buildProjectListen() {
     }));
     audio.addEventListener("error", () => row.classList.add("is-missing"));
     row.append(audio, projectElement("span", "project-player-missing", "Enregistrement à venir."));
-    const markers = projectElement("span", "project-markers");
-    ecoute.reperes.forEach((marker) => {
-      const button = projectElement("button", "project-marker");
+    const seekTo = (seconds) => {
+      const seek = () => { audio.currentTime = seconds; audio.play().catch(() => {}); };
+      if (audio.readyState >= 1) seek();
+      else audio.addEventListener("loadedmetadata", seek, { once: true });
+    };
+    const markers = projectElement("div", "project-markers");
+    const sections = projectElement("span", "project-sections");
+    const letters = projectElement("span", "project-letters");
+    const showLetters = (part) => {
+      letters.replaceChildren(...(part.lettres ?? []).map((letter) => {
+        const time = markerTime(letter);
+        const button = projectElement("button", "project-marker is-letter", letter.nom);
+        button.type = "button";
+        button.title = `${letter.nom} — mesure ${letter.mesure}, ${projectTimeLabel(time)}`;
+        button.setAttribute("aria-label", `${player.titre} : lettre ${letter.nom}, mesure ${letter.mesure}, ${projectTimeLabel(time)}`);
+        button.addEventListener("click", () => seekTo(time));
+        return button;
+      }));
+    };
+    ecoute.sections.forEach((part, index) => {
+      const time = markerTime(part);
+      const button = projectElement("button", "project-marker is-section", part.nom);
       button.type = "button";
-      button.append(projectElement("strong", "", marker.nom), document.createTextNode(` ${marker.temps}`));
-      button.title = `${marker.nom} — mesure ${marker.mesure}, ${marker.temps}`;
-      button.setAttribute("aria-label", `${player.titre} : ${marker.nom}, mesure ${marker.mesure}, ${marker.temps}`);
+      button.title = `${part.nom} — mesure ${part.mesure}, ${projectTimeLabel(time)}`;
+      button.setAttribute("aria-label", `${player.titre} : ${part.nom}, mesure ${part.mesure}, ${projectTimeLabel(time)}`);
+      button.setAttribute("aria-pressed", String(index === 0));
       button.addEventListener("click", () => {
-        const seek = () => { audio.currentTime = parseProjectTime(marker.temps); audio.play().catch(() => {}); };
-        if (audio.readyState >= 1) seek();
-        else audio.addEventListener("loadedmetadata", seek, { once: true });
+        sections.querySelectorAll("button").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+        showLetters(part);
+        seekTo(time);
       });
-      markers.append(button);
+      sections.append(button);
     });
+    showLetters(ecoute.sections[0]);
+    markers.append(sections, letters);
     row.append(markers);
     section.append(row);
   });
@@ -18870,24 +18925,21 @@ function buildProjectPanel() {
   panel.append(projectElement("p", "project-kicker", data.sousTitre ?? "Répétition"));
   panel.append(projectElement("h1", "project-title", data.titre));
 
-  const choose = (key, apply, button) => {
-    panel.querySelectorAll("[data-project-item]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
-    selectProjectItem(key, apply);
-  };
-  const itemButton = (key, label, apply, extraClass = "") => {
-    const button = projectElement("button", `project-item ${extraClass}`.trim(), label);
+  const itemButton = (key, label, apply) => {
+    const button = projectElement("button", "project-item");
     button.type = "button";
     button.dataset.projectItem = key;
     button.setAttribute("aria-pressed", "false");
-    button.addEventListener("click", () => choose(key, apply, button));
+    button.append(projectColorizedName(label));
+    button.addEventListener("click", () => {
+      panel.querySelectorAll("[data-project-item]").forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+      selectProjectItem(key, apply);
+    });
     return button;
   };
 
   panel.append(projectElement("h2", "project-heading", "Référence"));
-  const reference = itemButton("reference", data.reference.nom, projectReferenceSelection(), "is-reference");
-  const tonicNames = projectElement("span", "project-item-tonics", data.reference.toniques.join(" · "));
-  reference.append(tonicNames);
-  panel.append(reference);
+  panel.append(itemButton("reference", data.reference.nom, projectReferenceSelection()));
   if (data.aide) panel.append(projectElement("p", "project-help", data.aide));
 
   panel.append(projectElement("h2", "project-heading", "Tétracordes"));
@@ -18895,74 +18947,109 @@ function buildProjectPanel() {
   data.tetracordes.forEach((tetrachord, index) => {
     if (tetrachord.section && tetrachord.section !== section) panel.append(projectElement("h3", "project-subheading", tetrachord.section));
     section = tetrachord.section ?? null;
-    const row = projectElement("div", "project-tetrachord");
-    row.append(projectElement("span", "project-tetrachord-name", tetrachord.nom));
-    const tonics = projectElement("span", "project-tetrachord-tonics");
-    tetrachord.toniques.forEach((name) => {
-      tonics.append(itemButton(`t${index}:${name}`, name, projectTetrachordSelection(tetrachord.nom, name), "is-tonic"));
-    });
-    row.append(tonics);
-    panel.append(row);
+    panel.append(itemButton(`t${index}`, tetrachord.nom, projectTetrachordSelection(tetrachord)));
   });
 
-  panel.append(projectElement("h2", "project-heading", "Bourdon"));
+  // Son : timbre, « Tout arrêter » et plein écran (venus de la barre du haut), puis le bourdon.
+  panel.append(projectElement("h2", "project-heading", "Son"));
+  const soundRow = projectElement("div", "project-sound-row");
+  const timbre = document.querySelector(".sound-timbre-control");
+  if (timbre) soundRow.append(timbre);
+  const stop = document.querySelector("#audio-stop");
+  if (stop) soundRow.append(stop);
+  const fullscreen = document.querySelector("#fullscreen-toggle");
+  if (fullscreen) soundRow.append(fullscreen);
+  panel.append(soundRow);
   panel.append(projectSegmented("Notes du bourdon", [{ label: "Tonique + quinte", fifth: true }, { label: "Tonique seule", fifth: false }],
     (option) => option.fifth === projectState.droneFifth, (option) => {
       projectState.droneFifth = option.fifth;
       restartProjectDrone();
     }));
-  panel.append(projectSegmented("Octave du bourdon et des notes", data.sons.registres.map((r) => ({ ...r, label: r.nom })),
-    (_, index) => index === 0, (option) => {
-      projectState.register = option;
-      stopAllSounds();
-      applyProjectRegister();
-      render();
-    }));
-  panel.append(projectSlider("Volume du bourdon", projectState.droneVolume, (value) => { projectState.droneVolume = value; applyProjectVolumes(); }));
-  panel.append(projectSlider("Volume des notes", projectState.notesVolume, (value) => { projectState.notesVolume = value; applyProjectVolumes(); }));
-  panel.append(projectElement("p", "project-help", "Cliquer une note du tableau ou du graphique la fait sonner par-dessus le bourdon; recliquer l’arrête."));
+  const octave = projectElement("div", "project-octave");
+  octave.setAttribute("role", "group");
+  octave.setAttribute("aria-label", "Octave du bourdon et des notes");
+  const value = projectElement("output", "project-octave-value");
+  const showOctave = () => {
+    const offset = projectState.octaveOffset;
+    value.textContent = offset === 0 ? "0" : offset > 0 ? `+${offset}` : `−${Math.abs(offset)}`;
+  };
+  const stepOctave = (step) => {
+    projectState.octaveOffset = Math.max(-2, Math.min(2, projectState.octaveOffset + step));
+    showOctave();
+    const drone = projectState.drone;
+    stopAllSounds();
+    applyProjectRegister();
+    render();
+    if (drone) {
+      const button = document.querySelector(`[data-project-drone="${CSS.escape(drone.key)}"]`);
+      if (button) startProjectDrone(drone.key, projectDroneFrequency(button));
+    }
+  };
+  const down = projectElement("button", "", "−");
+  down.type = "button";
+  down.setAttribute("aria-label", "Descendre d’une octave");
+  down.addEventListener("click", () => stepOctave(-1));
+  const up = projectElement("button", "", "+");
+  up.type = "button";
+  up.setAttribute("aria-label", "Monter d’une octave");
+  up.addEventListener("click", () => stepOctave(1));
+  octave.append(projectElement("span", "", "Octave"), down, value, up);
+  showOctave();
+  panel.append(octave);
+  panel.append(projectSlider("Volume du bourdon", projectState.droneVolume, (v) => { projectState.droneVolume = v; applyProjectVolumes(); }));
+  panel.append(projectSlider("Volume des notes", projectState.notesVolume, (v) => { projectState.notesVolume = v; applyProjectVolumes(); }));
   return panel;
 }
 
-// Rangées du tableau : un bouton « Bourdon » à gauche de chacune; notes absentes de la référence en couleur.
+// Tableau : seules les rangées des toniques demandées; un bouton « Bourdon » à gauche de chacune; pour un
+// tétracorde, les degrés qui n'en font pas partie en filigrane et son nom devant celui du mode.
 function decorateProjectTable() {
   const content = elements.tableContent;
-  content.querySelectorAll(".project-drone-anchor").forEach((node) => node.remove());
-  const rows = [...content.querySelectorAll(".mode-heji-row")];
   const model = content.querySelector(".mode-model");
-  if (model) model.classList.add("has-project-drones");
-  rows.forEach((row, index) => {
-    const first = row.querySelector(".mode-heji-cell[data-audio-relative-ratio]");
-    if (!first) return;
-    // Tétracorde : le bourdon est sur sa tonique (la tonique choisie), pas sur celle du mode qui le contient.
-    const tonicRatio = state.catalog === "tetracordes" ? state.selectedTonic : row.dataset.tonicRatio ?? state.selectedTonic;
-    const name = Object.entries(PROJECT_TONICS).find(([, t]) => t.ratio === tonicRatio)?.[0] ?? plainHejiNote(ratioToHeji(tonicRatio));
+  if (!model) return;
+  model.classList.add("has-project-drones");
+  const rows = [...content.querySelectorAll(".mode-heji-row")];
+  rows.forEach((row) => {
+    if (projectState.rows && !projectState.rows.has(row.dataset.tonicRatio ?? state.selectedTonic)) row.remove();
+  });
+  const columns = projectState.tetrachordColumns;
+  [...content.querySelectorAll(".mode-heji-row")].forEach((row, index) => {
+    if (columns) {
+      [...row.querySelectorAll(".mode-heji-cell")].forEach((cell, degree) => {
+        cell.classList.toggle("is-function-context", degree < columns.start || degree >= columns.start + columns.length);
+      });
+    }
+    const tonicRatio = row.dataset.tonicRatio ?? state.selectedTonic;
     const anchor = projectElement("span", "project-drone-anchor");
     const button = projectElement("button", "project-drone-button", "Bourdon");
     button.type = "button";
     button.dataset.projectDrone = `${projectState.current}:${tonicRatio}:${index}`;
-    button.setAttribute("aria-label", `Bourdon sur ${name}`);
-    button.title = `Bourdon sur ${name}`;
+    button.setAttribute("aria-label", `Bourdon sur ${plainHejiNote(ratioToHeji(tonicRatio))}`);
     button.projectRow = row;
     anchor.projectRow = row;
     button.addEventListener("click", () => {
       if (projectState.drone?.key === button.dataset.projectDrone) stopProjectDrone();
       else { stopProjectDrone(); startProjectDrone(button.dataset.projectDrone, projectDroneFrequency(button)); }
     });
-    anchor.append(projectElement("span", "project-drone-tonic", name), button);
+    anchor.append(button);
     row.prepend(anchor);
   });
-  // Tétracorde : ses notes absentes du mode de référence (même tonique) sont mises en couleur.
-  document.querySelectorAll(".is-project-new").forEach((node) => node.classList.remove("is-project-new"));
-  if (state.catalog === "tetracordes") {
-    const entry = tetrachordEntryForSelection();
-    const referenceRatios = new Set(projectState.data.reference.rapports);
-    const fresh = new Set(entry.ratios.filter((ratio) => !referenceRatios.has(ratio))
-      .map((ratio) => audioPitchKey(ratio)));
-    document.querySelectorAll("#mode-table-content [data-audio-ratio], #network-nodes [data-audio-ratio]").forEach((node) => {
-      if (fresh.has(node.dataset.audioRatio)) node.classList.add("is-project-new");
+  model.classList.toggle("is-function-preview", Boolean(columns));
+  if (columns) {
+    content.querySelectorAll(".mode-ratio-row .mode-ratio-cell, .mode-degree-row > *").forEach((cell) => cell.classList.remove("is-function-context"));
+    [...content.querySelectorAll(".mode-ratio-row .mode-ratio-cell")].forEach((cell, degree) => {
+      cell.classList.toggle("is-function-context", degree < columns.start || degree >= columns.start + columns.length);
     });
+    const title = elements.tableTitle;
+    const prefix = projectElement("span", "project-title-tetrachord");
+    prefix.append(projectColorizedName(columns.code), document.createTextNode(" · "));
+    title.prepend(prefix);
   }
+  // Le titre commence au bord gauche du tableau, pas à celui de la marge des bourdons.
+  const titleBox = elements.tableTitle.closest(".mode-table-heading") ?? elements.tableTitle;
+  titleBox.style.marginLeft = "";
+  const offset = model.getBoundingClientRect().left - elements.tableTitle.getBoundingClientRect().left;
+  if (Math.abs(offset) > 0.5) titleBox.style.marginLeft = `${offset}px`;
   refreshProjectDroneButtons();
 }
 
@@ -18972,7 +19059,6 @@ async function startProjectMode(url) {
   projectState.data = await response.json();
   projectState.base = new URL(url, document.baseURI).href;
   projectState.active = true;
-  projectState.register = projectState.data.sons.registres[0];
   document.body.classList.add("is-project");
   document.title = `${projectState.data.titre} — ${projectState.data.sousTitre ?? "Répétition"}`;
   // Rien n'est enregistré dans le navigateur, et la sélection reste dans le matériel du projet.
@@ -18989,18 +19075,14 @@ async function startProjectMode(url) {
     elements.audioInstrument.insertBefore(defaultOption, firstGroup);
     if (!firstGroup.children.length) firstGroup.remove();
   }
-  state.audioInstrument = projectState.data.sons.defaut;
-  state.audioVolume = 100;
-  state.audioMuted = false;
-  state.showTableCents = true;
-  state.tableShowModeName = true;
-  state.graphView = "mode";
-  state.displayMode = "heji";
+  Object.assign(state, {
+    audioInstrument: projectState.data.sons.defaut, audioVolume: 100, audioMuted: false, showTableCents: true,
+    tableShowModeName: true, tableShowChords: false, graphView: "mode", displayMode: "heji",
+  });
   elements.audioInstrument.addEventListener("change", () => restartProjectDrone());
   // « Tout arrêter » et la barre d'espace éteignent aussi le bourdon.
   const baseStopAllSounds = stopAllSounds;
   stopAllSounds = () => { stopProjectDrone(); baseStopAllSounds(); };
-  elements.audioStop?.addEventListener("click", stopProjectDrone);
   document.querySelector("#audio-stop")?.addEventListener("click", stopProjectDrone);
   // Le volume des notes et le bus du bourdon s'appliquent dès que le son démarre.
   const baseEnsureAudioContext = ensureAudioContext;
