@@ -1,0 +1,40 @@
+{
+  "titre": "Alto et violoncelle",
+  "sousTitre": "Page de répétition",
+  "ecoute": {
+    "lecteurs": [
+      { "titre": "Pièce complète", "fichier": "audio/piece-complete.mp3" },
+      { "titre": "Alto seul", "fichier": "audio/alto.mp3" },
+      { "titre": "Violoncelle seul", "fichier": "audio/violoncelle.mp3" }
+    ],
+    "reperes": [
+      { "nom": "Intro", "mesure": 1, "temps": "0:00" },
+      { "nom": "Choral", "mesure": 38, "temps": "2:41" },
+      { "nom": "Monodies", "mesure": 132, "temps": "9:32" },
+      { "nom": "Finale", "mesure": 218, "temps": "15:50" }
+    ]
+  },
+  "reference": {
+    "nom": "Éolien L7",
+    "rapports": ["1/1", "9/8", "7/6", "4/3", "3/2", "14/9", "7/4"],
+    "toniques": ["fa", "do", "sol", "ré"]
+  },
+  "aide": "Accordeur à la = 440 ; visez l’écart affiché.",
+  "tetracordes": [
+    { "nom": "Min-24L7", "rapports": ["1/1", "9/8", "7/6", "4/3"], "toniques": ["fa", "do", "sol", "ré"] },
+    { "nom": "Phryg-54L7", "rapports": ["1/1", "28/27", "7/6", "4/3"], "toniques": ["do", "sol", "ré", "la"] },
+    { "nom": "Phryg-12L13", "rapports": ["1/1", "13/12", "7/6", "4/3"], "toniques": ["do", "sol", "ré", "la"] },
+    { "nom": "Phryg3-60L7", "rapports": ["1/1", "21/20", "5/4", "4/3"], "toniques": ["fa", "do", "sol", "ré"] },
+    { "nom": "Phryg3-27L11", "rapports": ["1/1", "28/27", "11/9", "4/3"], "toniques": ["sol", "la", "mi"] },
+    { "section": "Fin de la pièce, sur do seulement", "nom": "Min-30L11", "rapports": ["1/1", "11/10", "6/5", "4/3"], "toniques": ["do"] },
+    { "section": "Fin de la pièce, sur do seulement", "nom": "Phryg-60L7m", "rapports": ["1/1", "21/20", "6/5", "4/3"], "toniques": ["do"] }
+  ],
+  "sons": {
+    "timbres": ["analog", "harmonium", "organ", "organ-sampled"],
+    "defaut": "analog",
+    "registres": [
+      { "nom": "Registre alto", "octave": 3 },
+      { "nom": "Registre violoncelle", "octave": 2 }
+    ]
+  }
+}
