@@ -23,15 +23,15 @@
           "temps": 4
         },
         {
-          "depuis": 218,
+          "depuis": 207,
           "temps": 3
         }
       ],
       "ajouts": [
         {
-          "mesure": 216,
-          "secondes": 0.6,
-          "note": "ritardando"
+          "mesure": 205,
+          "secondes": -1.5,
+          "note": "ritardando puis a tempo (calé sur l'audio)"
         }
       ]
     },
@@ -52,87 +52,83 @@
       },
       {
         "nom": "Choral",
-        "mesure": 38,
+        "mesure": 35,
         "lettres": [
           {
             "nom": "C",
-            "mesure": 38
+            "mesure": 35
           },
           {
             "nom": "D",
-            "mesure": 47
+            "mesure": 44
           },
           {
             "nom": "E",
-            "mesure": 57
+            "mesure": 54
           },
           {
             "nom": "F",
-            "mesure": 68
+            "mesure": 65
           },
           {
             "nom": "G",
-            "mesure": 80
+            "mesure": 79
           },
           {
             "nom": "H",
-            "mesure": 87
+            "mesure": 86
           },
           {
             "nom": "I",
-            "mesure": 95
+            "mesure": 94
           },
           {
             "nom": "J",
-            "mesure": 111
+            "mesure": 110
           },
           {
             "nom": "K",
-            "mesure": 120
+            "mesure": 119
           }
         ]
       },
       {
         "nom": "Monodies",
-        "mesure": 132,
+        "mesure": 131,
         "lettres": [
           {
             "nom": "L",
-            "mesure": 132
+            "mesure": 131
           },
           {
             "nom": "M",
-            "mesure": 154
+            "mesure": 153
           },
           {
             "nom": "N",
-            "mesure": 163
+            "mesure": 162
           },
           {
             "nom": "O",
-            "mesure": 177
+            "mesure": 176
           },
           {
             "nom": "P",
-            "mesure": 187
+            "mesure": 186
           },
           {
             "nom": "Q",
-            "mesure": 195
-          },
-          {
-            "nom": "R",
-            "mesure": 207
+            "mesure": 196
           }
         ]
       },
       {
         "nom": "Finale",
-        "mesure": 218,
+        "mesure": 207,
         "lettres": [
           {
-            "nom": "S",
-            "mesure": 218
+            "nom": "R",
+            "mesure": 207
           }
         ]
       }
