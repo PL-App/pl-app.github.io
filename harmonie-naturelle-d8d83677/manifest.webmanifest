@@ -1,0 +1,16 @@
+{
+ "name": "Harmonie naturelle",
+ "short_name": "Harmonie naturelle",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#fdfcfa",
+ "theme_color": "#fdfcfa",
+ "icons": [
+  {
+   "src": "assets/favicon.svg",
+   "sizes": "any",
+   "type": "image/svg+xml"
+  }
+ ]
+}
