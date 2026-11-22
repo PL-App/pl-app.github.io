@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Accords et relations harmoniques en harmonie naturelle." />
+    <title>Accords–Modes — Accords — harmonie naturelle</title>
+    <link rel="icon" href="../modes/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../modes/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="app-bar">
+        <div class="app-identity">
+          <a class="global-home" href="/" target="_top" aria-label="Retour à Harmonie naturelle">
+            <span aria-hidden="true">⌂</span>
+          </a>
+          <button type="button" class="app-title-button" id="app-title" aria-label="Revenir à Ré sans accord sélectionné">Accords–Modes</button>
+        </div>
+
+        <div class="app-actions" aria-label="Commandes d’affichage">
+          <div class="display-switch" role="group" aria-label="Mode d’affichage">
+            <button type="button" data-display="heji" aria-pressed="true">HEJI</button>
+            <button type="button" data-display="ratio" aria-pressed="false">Ratios</button>
+            <button type="button" data-display="heji-cents" aria-pressed="false">HEJI et cents</button>
+          </div>
+
+          <div class="sound-controls" id="sound-controls" aria-label="Lecture sonore">
+            <div class="sound-controls-row">
+              <button type="button" class="sound-mute-button" id="sound-mute-button" data-keyboard-hint="clavier : barre d’espace">Silence</button>
+              <div class="sound-octave-control" role="group" aria-label="Octave des prochains sons">
+                <span class="sound-octave-label">Octave</span>
+                <div class="sound-octave-buttons">
+                  <button type="button" data-audio-octave="-1" data-keyboard-hint="clavier : tonique z" aria-pressed="false">−1</button>
+                  <button type="button" data-audio-octave="0" data-keyboard-hint="clavier : tonique a" aria-pressed="true">0</button>
+                  <button type="button" data-audio-octave="1" data-keyboard-hint="clavier : tonique q" aria-pressed="false">+1</button>
+                </div>
+              </div>
+            </div>
+            <p class="sound-hover-hint" id="sound-hover-hint" aria-live="polite"></p>
+          </div>
+
+          <div class="options-control">
+            <button class="options-button" id="options-button" type="button" aria-expanded="false" aria-controls="options-popover">Options</button>
+            <div class="options-popover" id="options-popover" hidden>
+              <strong class="options-title">Options du réseau</strong>
+              <div class="network-options" aria-label="Réglages du réseau">
+                <div class="option-row">
+                  <span>Niveau de connexion</span>
+                  <div class="level-switch" role="group" aria-label="Niveau de connexion du réseau">
+                    <button type="button" data-connection-level="1" aria-pressed="true">1</button>
+                    <button type="button" data-connection-level="2" aria-pressed="false">2</button>
+                  </div>
+                </div>
+                <label class="option-row" for="text-size">
+                  <span>Taille</span>
+                  <input id="text-size" aria-label="Taille du texte et des points du réseau" type="number" min="0.5" max="4" step="0.1" value="2" />
+                </label>
+                <label class="option-row" for="text-offset">
+                  <span>Décalage</span>
+                  <input id="text-offset" aria-label="Décalage vertical du texte du réseau" type="number" min="0" max="6" step="0.1" value="2" />
+                </label>
+                <label class="option-row label-toggle" for="show-labels">
+                  <span>Afficher les notes</span>
+                  <input id="show-labels" type="checkbox" checked />
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="content-surface">
+        <div class="network-layout">
+          <aside class="primary-selection" id="primary-selection" aria-label="Tonique et accord sélectionnés">
+            <div class="tonic-mini-map" id="tonic-mini-map" aria-label="Sélectionner directement une tonique dans le réseau"></div>
+
+            <div class="mode-control chord-control" id="chord-control">
+              <div class="selection-kind-switch" role="group" aria-label="Choisir le menu des accords ou des modes">
+                <button type="button" data-harmonic-view="accords" aria-pressed="true">Accords</button>
+                <button type="button" data-harmonic-view="modes" aria-pressed="false">Modes</button>
+              </div>
+              <div class="selection-choice-row">
+                <div class="tonic-choice">
+                  <button
+                    type="button"
+                    class="selection-summary"
+                    id="selection-summary"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="tonic-menu-popover"
+                    aria-live="polite"
+                  ></button>
+                  <div class="tonic-menu-popover" id="tonic-menu-popover" role="listbox" hidden></div>
+                </div>
+                <div class="mode-choice chord-choice-menu">
+                  <select class="visually-hidden" id="chord-select" aria-label="Accord disponible" tabindex="-1"></select>
+                  <button
+                    type="button"
+                    class="mode-menu-button"
+                    id="chord-menu-button"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="chord-menu-popover"
+                    aria-label="Accords — toutes les hauteurs affichées"
+                  >
+                    <span id="chord-menu-label">Accords</span>
+                    <span class="menu-caret" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="mode-menu-popover" id="chord-menu-popover" role="listbox" hidden></div>
+                </div>
+              </div>
+              <div class="mode-variant-selector" id="chord-variant-selector" role="group" aria-label="Limite de l’accord"></div>
+            </div>
+          </aside>
+
+          <div class="analysis-column">
+            <section class="network-board" aria-labelledby="network-title">
+              <h2 class="visually-hidden" id="network-title">Réseau des accords</h2>
+              <p class="visually-hidden" id="network-status" aria-live="polite"></p>
+              <div class="network-scroll" id="network-scroll">
+                <div class="network-stage" id="network-stage" aria-label="Réseau harmonique des rapports de l’accord">
+                  <svg aria-hidden="true" class="network-lines" id="network-lines" preserveAspectRatio="xMidYMid meet" viewBox="0 0 1000 620"></svg>
+                  <div id="network-nodes"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="mode-table-section chord-table-section" id="chord-table-section" hidden aria-labelledby="chord-table-title">
+              <div class="mode-table-heading visually-hidden">
+                <h2 id="chord-table-title"></h2>
+              </div>
+              <div class="mode-table-scroll">
+                <div id="chord-table-content"></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="./chords-data.js" defer></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

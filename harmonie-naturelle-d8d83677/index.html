@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harmonie naturelle</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#fffefb;--ink:#111110}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#fffefb;--ink:#111110}}
+:root[data-theme="dark"]{--bg:#fffefb;--ink:#111110}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
+iframe{display:block;border:0;width:100%;height:100%}
+#chargement{position:fixed;inset:0;display:grid;place-items:center;color:var(--ink);font:300 15px Arial,Helvetica,sans-serif}
+</style>
+</head>
+<body>
+<p id="chargement">Chargement…</p>
+<iframe id="suite" title="Harmonie naturelle" allow="autoplay; clipboard-write; fullscreen" allowfullscreen></iframe>
+<script>
+// Site Harmonie naturelle publié comme page Claude (20 octobre 2026).
+// Sauvegarde durable : tout ce que la suite garde dans le navigateur (réseaux, touches enregistrées, réglages)
+// est recopié dans l'espace privé de la personne connectée (capacité « db », dossier data/users/<id>), puis
+// rendu à l'ouverture sur n'importe quel appareil. La suite elle-même n'en sait rien : elle écrit dans
+// localStorage comme avant; cette page écoute les changements (événement « storage », même origine).
+(function () {
+  var q = new URLSearchParams(location.search);
+  var vue = ['accords', 'intervalles', 'tetracordes'].indexOf(q.get('vue')) >= 0 ? q.get('vue') : 'modes';
+  var tab = ['analysis', 'summary', 'frettier'].indexOf(q.get('onglet')) >= 0 ? q.get('onglet') : 'modes';
+  var frame = document.getElementById('suite');
+  var started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    document.getElementById('chargement').remove();
+    frame.src = 'apps/modes/index.html?vue=' + vue + '&onglet=' + tab + '&v=f132ae001287';
+  }
+
+  var STAMPS = 'hn-durable-stamps-v1';
+  var MAX = 240000; // une valeur par document, sous la limite de 256 Kio
+  function stamps() { try { return JSON.parse(localStorage.getItem(STAMPS) || '{}') || {}; } catch (e) { return {}; } }
+  function saveStamps(value) { try { localStorage.setItem(STAMPS, JSON.stringify(value)); } catch (e) {} }
+  function mirrored(key) { return typeof key === 'string' && key !== STAMPS && key.length < 180; }
+  function docId(key) { return 'k~' + key.replace(/[^A-Za-z0-9_.~:@+-]/g, function (c) { return '+' + c.charCodeAt(0).toString(16) + '+'; }); }
+
+  var store = null; // { coll } une fois la personne connectée
+  var timers = {};
+  function push(key) {
+    if (!store) return;
+    clearTimeout(timers[key]);
+    timers[key] = setTimeout(function () {
+      var value = localStorage.getItem(key);
+      if (value !== null && value.length > MAX) { console.warn('Trop grand pour la sauvegarde durable :', key); return; }
+      var at = stamps()[key] || Date.now();
+      store.coll.doc(docId(key)).set({ key: key, value: value, savedAt: at }).catch(function (e) {
+        console.warn('Sauvegarde durable impossible :', e && e.code);
+      });
+    }, 1200);
+  }
+  window.addEventListener('storage', function (event) {
+    if (event.storageArea !== localStorage) return;
+    var s = stamps();
+    if (event.key === null) return; // effacement complet (outils de test) : rien n'est effacé dans l'espace durable
+    // Tant que l'espace durable n'est pas relié, rien n'est daté : à la prochaine ouverture, sa version l'emporte.
+    if (!store || !mirrored(event.key)) return;
+    s[event.key] = Date.now();
+    saveStamps(s);
+    push(event.key);
+  });
+
+  async function connect() {
+    if (!window.claude || typeof window.claude.use !== 'function') return start();
+    var limit = setTimeout(start, 6000); // ne jamais laisser la page en attente
+    try {
+      var results = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      var db = results[0], user = results[1];
+      var id = user ? await user.id() : null;
+      if (!db || !id) return start();
+      var coll = db.collection('data/users/' + id);
+      var snap = await coll.get();
+      if (started) return; // ouverture déjà faite sans l'espace durable (délai dépassé) : ne rien toucher
+      var s = stamps();
+      snap.docs.forEach(function (doc) {
+        var data = doc.data();
+        if (!data || typeof data.key !== 'string' || !mirrored(data.key)) return;
+        if (!(s[data.key] >= data.savedAt)) {
+          // Version durable plus récente : elle remplace celle du navigateur avant l'ouverture de la suite.
+          if (data.value === null) localStorage.removeItem(data.key); else localStorage.setItem(data.key, data.value);
+          s[data.key] = data.savedAt;
+        }
+      });
+      saveStamps(s);
+      store = { coll: coll };
+      // Ce que ce navigateur a de plus récent (ou de nouveau) remonte dans l'espace durable.
+      var savedAt = {};
+      snap.docs.forEach(function (doc) { var d = doc.data(); if (d && typeof d.key === 'string') savedAt[d.key] = d.savedAt; });
+      for (var i = 0; i < localStorage.length; i += 1) {
+        var key = localStorage.key(i);
+        if (!mirrored(key)) continue;
+        if (!(key in savedAt) || (s[key] || 0) > savedAt[key]) {
+          if (!s[key]) s[key] = Date.now();
+          push(key);
+        }
+      }
+      saveStamps(s);
+    } catch (e) {
+      console.warn('Sauvegarde durable indisponible :', e && e.code);
+    } finally {
+      clearTimeout(limit);
+      start();
+    }
+  }
+  connect();
+
+  // Téléchargements (28 octobre 2026) : le cadre du site ne peut pas remettre un fichier lui-même. Il le confie à
+  // cette page, qui le remet par la fonction prévue (la personne confirme), puis répond « remis » ou la raison du refus.
+  var downloads;
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (event.source !== frame.contentWindow || !data || data.type !== 'hn-download') return;
+    var target = location.origin === 'null' ? '*' : location.origin;
+    var reply = function (message) { message.id = data.id; frame.contentWindow.postMessage(message, target); };
+    reply({ type: 'hn-download-ack' });
+    (async function () {
+      try {
+        if (downloads === undefined) {
+          downloads = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('downloads') : null;
+        }
+        if (!downloads) { reply({ type: 'hn-download-result', code: 'unavailable' }); return; }
+        var result = await downloads.save({ filename: data.filename, data: data.blob });
+        reply({ type: 'hn-download-result', status: result && result.status || 'saved' });
+      } catch (e) {
+        reply({ type: 'hn-download-result', code: (e && e.code) || 'unavailable' });
+      }
+    })();
+  });
+})();
+</script>
+</body>
+</html>
