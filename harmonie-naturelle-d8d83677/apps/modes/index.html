@@ -9,7 +9,7 @@
     />
     <title>Modes — harmonie naturelle</title>
     <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=2d2bee38" />
+    <link rel="stylesheet" href="./styles.css?v=e897309f" />
     <link rel="stylesheet" href="../accords/styles.css?v=a07db6f5" />
   </head>
   <body>
@@ -733,6 +733,9 @@ Les autres timbres (dont l’analogique, l’harmonium, l’orgue à tuyaux et l
                       <label><input type="checkbox" id="score-show-proportions"> Proportions</label>
                       <label><input type="checkbox" id="score-show-traite"> Notation du Traité</label>
                       <label class="caption-sub-option"><input type="checkbox" id="score-show-discordances" checked> Discordances</label>
+                      <!-- Lot v123 (Simon, 18 et 25 novembre 2026) : plafond de la notation, 16 par défaut. -->
+                      <label class="caption-sub-option score-ceiling-option">Plafond <input type="number" id="score-ceiling" class="score-ceiling-input" min="4" max="256" step="2" value="16" list="score-ceiling-presets" inputmode="numeric" aria-label="Plafond de la notation des accords"></label>
+                      <datalist id="score-ceiling-presets"><option value="8"></option><option value="16"></option><option value="24"></option><option value="32"></option></datalist>
                       <label><input type="checkbox" id="score-show-chord"> Accord</label>
                       <label class="score-tonic-option caption-sub-option"><input type="checkbox" id="score-show-tonic"> Tonique</label>
                     </div>
@@ -1331,6 +1334,6 @@ Les autres timbres (dont l’analogique, l’harmonium, l’orgue à tuyaux et l
     <script src="./mode-chords.js?v=793cdbf2" defer></script>
     <script src="./network-model.js?v=d7cbfef8" defer></script>
     <script src="./mode-tetrachords.js?v=658e8a37" defer></script>
-    <script src="./app.js?v=d891899a" defer></script>
+    <script src="./app.js?v=103c11d0" defer></script>
   </body>
 </html>

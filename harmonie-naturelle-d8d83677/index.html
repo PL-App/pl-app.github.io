@@ -34,7 +34,7 @@ iframe{display:block;border:0;width:100%;height:100%}
     if (started) return;
     started = true;
     document.getElementById('chargement').remove();
-    frame.src = 'apps/modes/index.html?vue=' + vue + '&onglet=' + tab + '&v=f132ae001287';
+    frame.src = 'apps/modes/index.html?vue=' + vue + '&onglet=' + tab + '&v=c9b476ffc366';
   }
 
   var STAMPS = 'hn-durable-stamps-v1';
@@ -119,6 +119,8 @@ iframe{display:block;border:0;width:100%;height:100%}
   window.addEventListener('message', function (event) {
     var data = event.data;
     if (event.source !== frame.contentWindow || !data || data.type !== 'hn-download') return;
+    // Hors de claude.ai (copie GitHub, 22 novembre 2026) : pas de remise par Claude; le cadre télécharge alors lui-même.
+    if (!window.claude || typeof window.claude.use !== 'function') return;
     var target = location.origin === 'null' ? '*' : location.origin;
     var reply = function (message) { message.id = data.id; frame.contentWindow.postMessage(message, target); };
     reply({ type: 'hn-download-ack' });

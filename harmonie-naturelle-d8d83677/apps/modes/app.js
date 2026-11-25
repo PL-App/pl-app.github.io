@@ -7452,12 +7452,7 @@ function openNetworkPresetSubmenu(trigger, focusFirst = false) {
   submenu.style.top = "-6px";
   if (typeof submenu.getBoundingClientRect === "function") {
     const viewportPadding = 8;
-    const bottomOverflow = submenu.getBoundingClientRect().bottom - (window.innerHeight - viewportPadding);
-    if (bottomOverflow > 0) submenu.style.top = `${-6 - bottomOverflow}px`;
-    const adjustedRect = submenu.getBoundingClientRect();
-    if (adjustedRect.top < viewportPadding) {
-      submenu.style.top = `${Number.parseFloat(submenu.style.top) + viewportPadding - adjustedRect.top}px`;
-    }
+    if (typeof fitSubmenuToWindow === "function") fitSubmenuToWindow(submenu);
     if (
       submenu.getBoundingClientRect().right > window.innerWidth - viewportPadding
       && group.getBoundingClientRect().left > submenu.getBoundingClientRect().width
@@ -10691,14 +10686,8 @@ function openActiveNetworkSubmenu(trigger, focusFirst = false) {
   trigger.setAttribute("aria-expanded", "true");
   submenu.hidden = false;
   submenu.style.top = "-7px";
-  const submenuRect = submenu.getBoundingClientRect();
   const viewportPadding = 8;
-  const bottomOverflow = submenuRect.bottom - (window.innerHeight - viewportPadding);
-  if (bottomOverflow > 0) submenu.style.top = `${-7 - bottomOverflow}px`;
-  const adjustedRect = submenu.getBoundingClientRect();
-  if (adjustedRect.top < viewportPadding) {
-    submenu.style.top = `${Number.parseFloat(submenu.style.top) + viewportPadding - adjustedRect.top}px`;
-  }
+  if (typeof fitSubmenuToWindow === "function") fitSubmenuToWindow(submenu);
   if (
     submenu.getBoundingClientRect().right > window.innerWidth - viewportPadding
     && group.getBoundingClientRect().left > submenu.getBoundingClientRect().width
@@ -12097,15 +12086,9 @@ function openFanSubmenu(trigger, focusFirst = false) {
     const offset = anchor.getBoundingClientRect().top - trigger.getBoundingClientRect().top;
     submenu.style.top = `${-offset}px`;
   }
-  const submenuRect = submenu.getBoundingClientRect();
   const viewportPadding = 8;
-  const bottomOverflow = submenuRect.bottom - (window.innerHeight - viewportPadding);
-  if (bottomOverflow > 0) submenu.style.top = `${Number.parseFloat(submenu.style.top) - bottomOverflow}px`;
-  let adjustedRect = submenu.getBoundingClientRect();
-  if (adjustedRect.top < viewportPadding) {
-    submenu.style.top = `${Number.parseFloat(submenu.style.top) + viewportPadding - adjustedRect.top}px`;
-    adjustedRect = submenu.getBoundingClientRect();
-  }
+  if (typeof fitSubmenuToWindow === "function") fitSubmenuToWindow(submenu);
+  const adjustedRect = submenu.getBoundingClientRect();
   if (adjustedRect.right > window.innerWidth - viewportPadding && group.getBoundingClientRect().left > adjustedRect.width) {
     group.classList.add("opens-left");
   }
@@ -24276,7 +24259,19 @@ function buildGraphMenus() {
 //   monter la base.
 // Vérifiée contre le répertoire corrigé (scripts/verify-notation-traite.mjs).
 
-var TRAITE_EVEN_LIMIT = 16n;
+// Plafond (lot v123, go de Simon le 25 novembre 2026; décisions du 18 novembre, 14 h 39–16 h 21) : le plus grand
+// nombre pair permis dans l'écriture d'un accord; 16 par défaut, réglable dans la fenêtre Notation (8, 16, 24, 32, ou
+// tout nombre pair). « Base » garde son sens de premier nombre de l'écriture.
+var TRAITE_CEILING_KEY = "harmonie-naturelle-plafond-v1";
+var TRAITE_CEILING_DEFAULT = 16;
+function traiteValidCeiling(value) {
+  const number = Math.round(Number(value));
+  return Number.isFinite(number) && number >= 4 && number <= 256 && number % 2 === 0 ? number : null;
+}
+var traiteCeilingValue = (() => {
+  try { return traiteValidCeiling(localStorage.getItem(TRAITE_CEILING_KEY)) ?? TRAITE_CEILING_DEFAULT; } catch { return TRAITE_CEILING_DEFAULT; }
+})();
+function traiteCeiling() { return BigInt(traiteCeilingValue); }
 
 function traiteFraction(numerator, denominator = 1n) {
   const n = BigInt(numerator);
@@ -24361,15 +24356,22 @@ function traiteRescale(tokens, factor) {
   return tokens.map((token) => (token.integer !== undefined ? { ...token, integer: token.integer * factor } : token));
 }
 
-/** Aucun nombre pair au-delà de 16; une septième jamais sous 6. */
-function traiteAcceptable(tokens) {
-  if (tokens.some((token) => token.integer !== undefined && token.integer % 2n === 0n && token.integer > TRAITE_EVEN_LIMIT)) return false;
+/** Aucun nombre pair au-delà du plafond; une septième jamais sous 6. Avec « ranks » (lot v123, Simon, 18 novembre
+ *  2026, 13 h 23 et 14 h 51) : une sixte (8/5, 5/3, 12/7) au-dessus de l'harmonique 6, un triton (10/7, 7/5…) entre 5
+ *  et 6, jamais plus bas; le plafond l'emporte : s'il ne le permet pas, l'écriture reste celle d'avant (2:(5/3):4:5). */
+function traiteAcceptable(tokens, ranks = false) {
+  const ceiling = traiteCeiling();
+  if (tokens.some((token) => token.integer !== undefined && token.integer % 2n === 0n && token.integer > ceiling)) return false;
   const first = tokens.find((token) => token.integer !== undefined);
   if (!first) return true;
   const base = traiteOver(traiteFraction(first.integer), first.pitch);
   return tokens.every((token) => {
     const cents = 1200 * Math.log2(traiteValue(traiteReduce(token.pitch)));
-    return !(cents > 940 && traiteValue(traiteTimes(token.pitch, base)) < 6);
+    const height = traiteValue(traiteTimes(token.pitch, base));
+    if (cents > 940 && height < 6) return false;
+    if (ranks && cents > 760 && cents <= 940 && height < 6) return false;
+    if (ranks && cents > 560 && cents < 650 && height < 5) return false;
+    return true;
   });
 }
 
@@ -24382,12 +24384,14 @@ function traiteCombinations(items, size) {
 function traiteNotation(pitches) {
   if (pitches.length < 2) return [];
   const extra = [9n, 11n, 13n, 15n];
-  for (let size = extra.length; size >= 0; size -= 1) {
-    for (const keep of traiteCombinations(extra, size)) {
-      const tokens = traiteCanonical(pitches, new Set([1n, 3n, 5n, 7n, ...keep]));
-      for (let k = 0n; k < 4n; k += 1n) {
-        const scaled = k === 0n ? tokens : traiteRescale(tokens, 2n ** k);
-        if (traiteAcceptable(scaled)) return scaled;
+  for (const ranks of [true, false]) {
+    for (let size = extra.length; size >= 0; size -= 1) {
+      for (const keep of traiteCombinations(extra, size)) {
+        const tokens = traiteCanonical(pitches, new Set([1n, 3n, 5n, 7n, ...keep]));
+        for (let k = 0n; k < 6n; k += 1n) {
+          const scaled = k === 0n ? tokens : traiteRescale(tokens, 2n ** k);
+          if (traiteAcceptable(scaled, ranks)) return scaled;
+        }
       }
     }
   }
@@ -24614,6 +24618,24 @@ if (typeof document !== "undefined" && typeof renderScore === "function") {
   ["#lissajous-show-chord", "#lissajous-show-proportions"].forEach((selector) => {
     document.querySelector(selector)?.addEventListener("change", () => { syncCaptionOptions(); renderLissajousCaption(); sizeLissajous?.(); });
   });
+  // Plafond (lot v123) : champ de la fenêtre Notation, préréglages 8, 16, 24, 32, ou tout nombre pair.
+  const ceiling = document.querySelector("#score-ceiling");
+  if (ceiling) {
+    ceiling.value = String(traiteCeilingValue);
+    const apply = () => {
+      const value = traiteValidCeiling(ceiling.value);
+      if (value === null) { ceiling.value = String(traiteCeilingValue); return; }
+      ceiling.value = String(value);
+      if (value === traiteCeilingValue) return;
+      traiteCeilingValue = value;
+      try { localStorage.setItem(TRAITE_CEILING_KEY, String(value)); } catch { /* réglage gardé pour cette visite */ }
+      if (scoreState.visible) renderScore();
+      renderLissajousCaption();
+      if (typeof scheduleWindowSpace === "function") scheduleWindowSpace();
+    };
+    ceiling.addEventListener("change", apply);
+    ceiling.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); apply(); } });
+  }
   syncCaptionOptions();
 }
 
@@ -24629,6 +24651,11 @@ function syncCaptionOptions() {
   if (typeof dropState !== "undefined" && dropState) windows.push(["drop", dropState]);
   if (typeof diskState !== "undefined" && diskState) windows.push(["disk", diskState]);
   if (typeof spiroState !== "undefined" && spiroState) windows.push(["spiro", spiroState]);
+  const ceilingInput = document.querySelector("#score-ceiling");
+  if (ceilingInput) {
+    ceilingInput.disabled = !scoreState.traite;
+    ceilingInput.closest("label")?.classList.toggle("is-unavailable", ceilingInput.disabled);
+  }
   windows.forEach(([prefix, target]) => {
     const discordances = document.querySelector(`#${prefix}-show-discordances`);
     if (discordances) {
@@ -27202,7 +27229,9 @@ function openSoundFamily(group) {
   // Sous-menu à gauche s'il dépasserait la fenêtre.
   const submenu = group.querySelector(".active-network-submenu");
   group.classList.remove("opens-left");
+  submenu.style.top = "-7px";
   if (submenu.getBoundingClientRect().right > window.innerWidth - 8) group.classList.add("opens-left");
+  if (typeof fitSubmenuToWindow === "function") fitSubmenuToWindow(submenu);
 }
 
 function renderSoundMenu(openFamily = null) {
@@ -28000,4 +28029,58 @@ function renderGraphActiveOverlay() {
     });
     return { x: left - origin.left, y: top - origin.top, width: right - left, height: bottom - top };
   };
+}
+// Sous-menus trop longs (lot v123, go de Simon le 25 novembre 2026, 13 h 25; demande du 18 novembre, 12 h 20, capture
+// du sous-menu Électroniques). Modèle donné : Dorico (Write › Create System Text). Un sous-menu ouvert reste toujours
+// entièrement dans la fenêtre : il est remonté autant qu'il faut; s'il est plus long que la fenêtre, il défile lui-même,
+// avec une petite flèche noire en bas (et en haut une fois descendu) qui indique qu'il continue. La page ne défile jamais.
+// Sert aux sous-menus des sons, des réseaux et des modes.
+
+const SUBMENU_MARGIN = 8;
+
+/** Ajuste un sous-menu déjà placé (son « top » aligné sur sa ligne) pour qu'il tienne dans la fenêtre. */
+function fitSubmenuToWindow(submenu) {
+  if (!submenu || submenu.hidden || typeof submenu.getBoundingClientRect !== "function") return;
+  submenu.querySelectorAll(":scope > .submenu-scroll-arrow").forEach((arrow) => arrow.remove());
+  submenu.classList.remove("is-scrolling-menu");
+  const room = Math.max(120, window.innerHeight - 2 * SUBMENU_MARGIN);
+  submenu.style.maxHeight = `${room}px`;
+  submenu.style.overflowY = "auto";
+  submenu.style.overscrollBehavior = "contain";
+  const top = () => Number.parseFloat(submenu.style.top) || 0;
+  let rect = submenu.getBoundingClientRect();
+  const overflow = rect.bottom - (window.innerHeight - SUBMENU_MARGIN);
+  if (overflow > 0) submenu.style.top = `${top() - overflow}px`;
+  rect = submenu.getBoundingClientRect();
+  if (rect.top < SUBMENU_MARGIN) submenu.style.top = `${top() + SUBMENU_MARGIN - rect.top}px`;
+  if (submenu.scrollHeight > submenu.clientHeight + 1) addSubmenuScrollArrows(submenu);
+}
+
+function addSubmenuScrollArrows(submenu) {
+  submenu.classList.add("is-scrolling-menu");
+  const make = (direction) => {
+    const arrow = document.createElement("div");
+    arrow.className = `submenu-scroll-arrow is-${direction}`;
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = direction === "up" ? "▲" : "▼";
+    let timer = null;
+    const stop = () => { if (timer) clearInterval(timer); timer = null; };
+    arrow.addEventListener("pointerenter", () => {
+      stop();
+      timer = setInterval(() => { submenu.scrollTop += direction === "up" ? -8 : 8; }, 16);
+    });
+    arrow.addEventListener("pointerleave", stop);
+    arrow.addEventListener("pointerdown", (event) => event.preventDefault());
+    return arrow;
+  };
+  const up = make("up");
+  const down = make("down");
+  submenu.prepend(up);
+  submenu.append(down);
+  const update = () => {
+    up.classList.toggle("is-visible", submenu.scrollTop > 1);
+    down.classList.toggle("is-visible", submenu.scrollTop + submenu.clientHeight < submenu.scrollHeight - 1);
+  };
+  submenu.addEventListener("scroll", update, { passive: true });
+  update();
 }
